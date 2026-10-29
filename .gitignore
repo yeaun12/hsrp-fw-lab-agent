@@ -1,0 +1,4 @@
+__pycache__/
+*.log
+company-agent/keys/
+company-agent/secrets.env

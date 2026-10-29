@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>랩컴퍼니 IT 운영 에이전트</title>
+<style>
+:root{--bg:#f5f6f8;--panel:#fff;--ink:#1d2330;--muted:#6b7280;--line:#e3e6eb;--accent:#2f6fde;--ok:#1f9d55;--warn:#d97706;--bad:#d64545;--chip:#eef2f7;--code:#f1f3f6}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--panel:#1a1e26;--ink:#e6e9ef;--muted:#9aa3b2;--line:#2a303b;--accent:#6c9cff;--ok:#3ccf7a;--warn:#f0a43a;--bad:#ff6b6b;--chip:#232833;--code:#232833}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,"Segoe UI","Malgun Gothic",sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:2;flex-wrap:wrap}
+header h1{font-size:16px;margin:0 8px 0 0}.chip{background:var(--chip);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted)}
+.chip.ok{color:var(--ok)}.chip.bad{color:var(--bad)}.spacer{flex:1}
+main{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px;padding:14px 18px;height:calc(100vh - 58px)}
+@media (max-width:900px){main{grid-template-columns:1fr;height:auto}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-height:0}
+.panel h2{font-size:13px;margin:0;padding:10px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.panel h2 .count{color:var(--muted);font-weight:400}
+.col{display:flex;flex-direction:column;gap:14px;min-height:0;overflow:auto}
+#chat{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:92%;padding:9px 12px;border-radius:10px;white-space:normal;word-break:break-word}
+.msg.admin{align-self:flex-end;background:var(--accent);color:#fff}
+.msg.agent{align-self:flex-start;background:var(--chip)}
+.msg.alert{align-self:center;border:1px solid var(--warn);color:var(--warn);background:transparent;font-size:13px}
+.msg.approval{align-self:center;border:1px solid var(--accent);color:var(--accent);background:transparent;font-size:13px}
+.msg.system{align-self:center;color:var(--muted);font-size:12px}
+.msg .t{font-size:11px;opacity:.7;margin-bottom:2px}
+details.tool{align-self:flex-start;font-size:12px;color:var(--muted);max-width:92%}
+details.tool summary{cursor:pointer}details.tool pre{white-space:pre-wrap;background:var(--code);padding:8px;border-radius:6px;max-height:260px;overflow:auto;color:var(--ink)}
+.msg table{border-collapse:collapse;margin:6px 0;font-size:13px}.msg th,.msg td{border:1px solid var(--line);padding:3px 7px;text-align:left}
+.msg code{background:var(--code);padding:1px 4px;border-radius:4px}
+form#ask{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
+form#ask input{flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+button{border:0;border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer;background:var(--accent);color:#fff}
+button.ghost{background:var(--chip);color:var(--ink)}button.danger{background:var(--bad)}button:disabled{opacity:.5;cursor:default}
+.suggest{display:flex;gap:6px;flex-wrap:wrap;padding:0 10px 10px}.suggest button{background:var(--chip);color:var(--ink);font-size:12px;padding:5px 10px}
+.body{padding:10px 14px;overflow:auto}
+.col>.panel{flex:0 0 auto}.col>.panel>.body{min-height:72px;max-height:320px}
+table.grid{width:100%;border-collapse:collapse;font-size:12.5px}table.grid th,table.grid td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left}
+table.grid th{color:var(--muted);font-weight:500}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:var(--muted)}
+.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}.dot.warn{background:var(--warn)}
+.item{padding:8px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}
+.item .meta{font-size:11.5px;color:var(--muted)}.sev-high{color:var(--bad)}.sev-medium{color:var(--warn)}.sev-info{color:var(--ok)}
+.appr{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px}.appr.pending{border-color:var(--accent)}
+.appr .actions{display:flex;gap:6px;margin-top:8px}.appr pre{white-space:pre-wrap;font-size:12px;background:var(--code);padding:6px;border-radius:6px;max-height:150px;overflow:auto}
+.devs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}.empty{color:var(--muted);font-size:12.5px}
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);max-width:420px}
+dialog input{width:100%;padding:8px;margin:8px 0;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+</style>
+</head>
+<body>
+<header>
+  <h1>랩컴퍼니 IT 운영 에이전트</h1>
+  <span class="chip" id="model"></span>
+  <span class="chip" id="busy">대기 중</span>
+  <span class="chip" id="poll"></span>
+  <span class="chip" id="cost" title="응답의 usage로 계산한 추정치입니다. 정확한 금액은 Claude 콘솔에서 확인하세요."></span>
+  <span class="spacer"></span>
+  <button class="ghost" id="keybtn">API 키 설정</button>
+</header>
+<main>
+  <section class="panel">
+    <h2>에이전트와 대화 <span class="spacer"></span><button class="ghost" id="resetbtn" style="font-size:12px;padding:4px 10px">새 대화</button></h2>
+    <div id="chat"></div>
+    <div class="suggest">
+      <button data-q="영업팀(VLAN20) PC가 DB 서버에 접속이 안 된대요. 원인을 확인해 주세요.">헬프데스크: DB 접속 불가</button>
+      <button data-q="지금 네트워크 전체 상태를 점검해서 요약해 주세요.">전체 상태 점검</button>
+      <button data-q="최근 10분 동안 방화벽이 차단한 외부 트래픽 중 의심스러운 것이 있나요?">방화벽 차단 기록 분석</button>
+    </div>
+    <form id="ask"><input id="q" placeholder="예: 지사에서 인터넷이 느리다는데 확인해 줄래요?" autocomplete="off"><button>보내기</button></form>
+  </section>
+  <div class="col">
+    <section class="panel"><h2>승인 대기 <span class="count" id="apprcount"></span></h2><div class="body" id="approvals"></div></section>
+    <section class="panel"><h2>인프라 상태</h2><div class="body"><div class="devs" id="devices"></div><table class="grid" id="hsrp"></table><table class="grid" id="gws" style="margin-top:8px"></table><div id="blocked" style="margin-top:8px"></div></div></section>
+    <section class="panel"><h2>감시 경보 <span class="count" id="alertcount"></span></h2><div class="body" id="alerts"></div></section>
+    <section class="panel"><h2>감사 로그</h2><div class="body" id="audit" style="max-height:240px"></div></section>
+  </div>
+</main>
+<dialog id="keydlg"><form method="dialog" id="keyform">
+  <b>Claude API 키 등록</b>
+  <div class="empty">키는 에이전트 PC(/opt/lab-agent/secrets)에만 저장되고 화면이나 로그에 다시 표시되지 않습니다.</div>
+  <input type="password" id="keyin" placeholder="sk-ant-..." autocomplete="off">
+  <div style="display:flex;gap:8px;justify-content:flex-end"><button value="cancel" class="ghost">취소</button><button id="keysave" value="default">저장</button></div>
+</form></dialog>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function md(text){
+  const lines = esc(text).split("\n"); let out = [], tbl = null;
+  const inline = s => s.replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>");
+  for (const l of lines){
+    if (/^\s*\|.*\|\s*$/.test(l)){
+      if (/^\s*\|[\s:|-]+\|\s*$/.test(l)) continue;
+      const cells = l.trim().slice(1,-1).split("|").map(c => inline(c.trim()));
+      if (!tbl){ tbl = "<table><tr>" + cells.map(c=>`<th>${c}</th>`).join("") + "</tr>"; }
+      else tbl += "<tr>" + cells.map(c=>`<td>${c}</td>`).join("") + "</tr>";
+      continue;
+    }
+    if (tbl){ out.push(tbl + "</table>"); tbl = null; }
+    if (/^#{1,4}\s/.test(l)) out.push(`<b>${inline(l.replace(/^#+\s/,""))}</b>`);
+    else if (/^\s*[-*]\s/.test(l)) out.push("• " + inline(l.replace(/^\s*[-*]\s/,"")));
+    else out.push(inline(l));
+  }
+  if (tbl) out.push(tbl + "</table>");
+  return out.join("<br>").replace(/(<\/table>)<br>/g,"$1");
+}
+let lastChat = -1, stickBottom = true;
+$("#chat").addEventListener("scroll", e => { const c = e.target; stickBottom = c.scrollHeight - c.scrollTop - c.clientHeight < 60; });
+function renderChat(chat){
+  if (chat.length === lastChat) return; lastChat = chat.length;
+  const label = {admin:"관리자", agent:"에이전트", alert:"감시 알림", approval:"승인 처리", system:"시스템"};
+  $("#chat").innerHTML = chat.map(m => {
+    if (m.kind === "tool") return `<details class="tool"><summary>🔧 ${esc(m.text)}</summary>`;
+    if (m.kind === "tool_result") return `<pre>${esc(m.text)}</pre></details>`;
+    return `<div class="msg ${m.kind}"><div class="t">${label[m.kind]||m.kind} · ${esc(m.time.slice(11))}</div>${m.kind==="agent"?md(m.text):esc(m.text).replace(/\n/g,"<br>")}</div>`;
+  }).join("") || `<div class="empty">아래 예시 버튼을 누르거나 질문을 입력해 보세요.</div>`;
+  if (stickBottom) $("#chat").scrollTop = 1e9;
+}
+function renderApprovals(list){
+  const pend = list.filter(a => a.status === "pending").length;
+  $("#apprcount").textContent = pend ? `${pend}건 대기` : "";
+  const st = {pending:"승인 대기", running:"실행 중", done:"실행 완료", failed:"실행 실패", rejected:"거부됨"};
+  $("#approvals").innerHTML = list.map(a => `<div class="appr ${a.status}">
+    <b>#${a.id} ${esc(a.summary)}</b><div class="meta empty">${esc(a.time)} · ${st[a.status]}</div>
+    <div style="margin-top:4px">사유: ${esc(a.reason)}</div>
+    ${a.result ? `<pre>${esc(a.result)}</pre>` : ""}
+    ${a.status === "pending" ? `<div class="actions"><button onclick="decide(${a.id},true)">승인</button><button class="danger" onclick="decide(${a.id},false)">거부</button></div>` : ""}
+  </div>`).join("") || `<div class="empty">승인을 기다리는 변경이 없습니다.</div>`;
+}
+function renderStatus(s){
+  const names = ["CORE1","CORE2","ASW1","ASW2","BRANCH","FW"];
+  $("#devices").innerHTML = names.map(n => { const d = s.devices[n]; const c = !d ? "" : d.up ? "ok" : "bad";
+    return `<span class="chip" title="${esc(d && (d.error||d.checked))}"><span class="dot ${c}"></span>${n}</span>`; }).join("");
+  const hs = Object.entries(s.hsrp || {}).sort((a,b)=>+a[0]-+b[0]);
+  $("#hsrp").innerHTML = hs.length ? `<tr><th>HSRP 그룹</th><th>VIP</th><th>Active</th><th>CORE1</th><th>CORE2</th></tr>` + hs.map(([g,v]) =>
+    `<tr><td>${g} (${esc(v.interface)})</td><td>${esc(v.vip)}</td><td><span class="dot ${v.active==="없음"||v.active==="둘 다"?"bad":"ok"}"></span>${esc(v.active)}</td>` +
+    ["CORE1","CORE2"].map(c => `<td>${v.members[c] ? esc(v.members[c].state) : "-"}</td>`).join("") + "</tr>").join("") : `<tr><td class="empty">HSRP 상태 수집 중...</td></tr>`;
+  const gw = Object.entries(s.gateways || {});
+  $("#gws").innerHTML = gw.length ? `<tr><th>FW 게이트웨이</th><th>모니터</th><th>손실</th><th>상태</th></tr>` + gw.map(([n,g]) =>
+    `<tr><td>${esc(n)}</td><td>${esc(g.monitor)}</td><td>${esc(g.loss)}</td><td><span class="dot ${g.status==="online"?"ok":"bad"}"></span>${esc(g.status)}</td></tr>`).join("") : "";
+  $("#blocked").innerHTML = `<span class="empty">FW 차단 목록:</span> ` + ((s.blocked_ips||[]).map(ip=>`<span class="chip bad">${esc(ip)}</span>`).join(" ") || `<span class="empty">없음</span>`);
+  $("#poll").textContent = s.updated ? `감시 갱신 ${s.updated.slice(11)}` : "감시 시작 중";
+}
+async function refresh(){
+  try {
+    const r = await fetch("/api/state"); const d = await r.json();
+    $("#model").textContent = d.model;
+    $("#busy").textContent = d.agent_busy ? "에이전트 작업 중..." : "대기 중";
+    $("#busy").className = "chip" + (d.agent_busy ? " ok" : "");
+    $("#keybtn").textContent = d.api_key_set ? "API 키 변경" : "API 키 설정 필요";
+    const u = d.usage || {}; const inTok = (u.input||0) + (u.cache_write||0) + (u.cache_read||0);
+    $("#cost").textContent = `API 사용 ≈ $${(u.usd||0).toFixed(2)} · 호출 ${u.calls||0}회` +
+      (inTok ? ` · 캐시 적중 ${Math.round(100*(u.cache_read||0)/inTok)}%` : "");
+    $("#resetbtn").disabled = d.agent_busy;
+    renderChat(d.chat); renderApprovals(d.approvals); renderStatus(d.status);
+    $("#alertcount").textContent = d.alerts.length ? `${d.alerts.length}건` : "";
+    $("#alerts").innerHTML = d.alerts.map(a => `<div class="item"><b class="sev-${a.severity}">${esc(a.title)}</b><div class="meta">#${a.id} · ${esc(a.time)}</div><div>${esc(a.detail)}</div></div>`).join("") || `<div class="empty">경보가 없습니다.</div>`;
+    $("#audit").innerHTML = d.audit.map(a => `<div class="item"><span class="meta">${esc(a.time.slice(11))} · ${esc(a.actor)} · ${esc(a.action)}</span><div>${esc(a.detail)}</div></div>`).join("");
+  } catch(e) { $("#poll").textContent = "에이전트 서버 연결 끊김"; }
+}
+async function post(path, body){ const r = await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); return r.json(); }
+async function decide(id, ok){ if (!ok || confirm(`승인 요청 #${id}을 실행할까요?`)) { await post(ok?"/api/approve":"/api/reject",{id}); refresh(); } }
+$("#ask").addEventListener("submit", async e => { e.preventDefault(); const t = $("#q").value.trim(); if (!t) return; $("#q").value=""; stickBottom = true; await post("/api/chat",{text:t}); refresh(); });
+document.querySelectorAll(".suggest button").forEach(b => b.onclick = async () => { stickBottom = true; await post("/api/chat",{text:b.dataset.q}); refresh(); });
+$("#keybtn").onclick = () => $("#keydlg").showModal();
+$("#resetbtn").onclick = async () => {
+  if (!confirm("새 대화를 시작할까요? 지금까지의 대화는 보관되고, 에이전트는 이전 내용을 기억하지 않습니다.")) return;
+  const r = await post("/api/reset", {}); if (r.error) alert(r.error); refresh();
+};
+$("#keysave").onclick = async e => { e.preventDefault(); const r = await post("/api/apikey",{key:$("#keyin").value}); $("#keyin").value=""; if (r.error) alert(r.error); else $("#keydlg").close(); refresh(); };
+refresh(); setInterval(refresh, 2000);
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+[Unit]
+Description=LabCompany IT operations agent (dashboard :8080)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/lab-agent/app
+ExecStart=/opt/lab-agent/venv/bin/python server.py
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

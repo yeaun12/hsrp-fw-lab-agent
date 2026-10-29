@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import audit
 import brain
 import config
+import web_detect
 import monitor
 import state
 import tools
@@ -85,6 +86,11 @@ class Handler(BaseHTTPRequestHandler):
             snap["audits"] = audit.list_audits()[:3]
             snap["audit_running"] = _audit_running.is_set()
             self._json(snap)
+        elif self.path == "/api/webattacks":
+            try:
+                self._json({"sources": web_detect.scan(lines=400)})
+            except Exception as e:
+                self._json({"error": str(e)}, 502)
         elif self.path.startswith("/api/audit?id="):
             try:
                 self._json(audit.load(self.path.split("=", 1)[1]))

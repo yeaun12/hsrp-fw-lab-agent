@@ -7,6 +7,7 @@ import brain
 import config
 import state
 import tools
+import web_detect
 from devices import DeviceError, ios_run, pfsense_run
 
 HSRP_LINE = re.compile(r"^(\S+)\s+(\d+)\s+(\d+)\s+P?\s*(Active|Standby|Speak|Listen|Init)\s+(\S+)\s+(\S+)\s+(\S+)", re.M)
@@ -73,6 +74,27 @@ def _poll_firewall():
                    f"최근 {config.SCAN_WINDOW_SEC // 60}분 동안 {r['src']}에서 온 패킷 {r['blocked_packets']}개를 방화벽이 차단했고, "
                    f"서로 다른 대상 {r['distinct_targets']}개(예: {', '.join(r['targets'][:8])})를 두드렸습니다. "
                    f"대상 IP: {', '.join(r['dst_ips'])}.", key=f"scan:{r['src']}")
+
+
+def _poll_webattacks():
+    try:
+        rows = web_detect.scan(lines=300)
+    except Exception as e:                 # WEB 로그 수집 실패는 조용히 넘긴다(웹 앱이 없을 수도 있음)
+        state.log_audit("monitor", "error", f"webattack: {type(e).__name__}: {e}")
+        return
+    with state.lock:
+        state.status["web_attacks"] = [{"src": r["src"], "attempts": r["attempts"],
+                                        "categories": r["categories"], "success": bool(r["success_hints"])} for r in rows[:5]]
+    for r in rows:
+        if r["attempts"] < 3:              # 산발적 요청은 경보로 올리지 않음
+            continue
+        sev = "high" if r["success_hints"] else "medium"
+        cats = "·".join(r["categories"])
+        detail = (f"{r['src']}에서 웹 서버({web_detect.WEB_HOST})로 {cats} 공격 시도 {r['attempts']}건. "
+                  f"탐지 시그니처: {', '.join(r['signatures'])}.")
+        if r["success_hints"]:
+            detail += " 성공 가능성: " + "; ".join(r["success_hints"])
+        _raise("web_attack", sev, f"웹 공격 탐지: {r['src']} ({cats})", detail, key=f"webatk:{r['src']}:{sev}")
 
 
 def _poll_gateways():
@@ -149,6 +171,7 @@ def _loop(fn, period, name):
 def start():
     threading.Thread(target=_dispatch, daemon=True, name="mon-dispatch").start()
     for fn, period, name in ((_poll_firewall, config.POLL_FIREWALL_SEC, "firewall"),
+                             (_poll_webattacks, config.POLL_FIREWALL_SEC, "webattack"),
                              (_poll_gateways, config.POLL_NETWORK_SEC, "gateways"),
                              (_poll_hsrp, config.POLL_NETWORK_SEC, "hsrp"),
                              (_poll_access, config.POLL_NETWORK_SEC * 3, "access")):

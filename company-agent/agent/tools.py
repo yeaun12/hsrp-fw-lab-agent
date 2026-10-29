@@ -7,6 +7,7 @@ import re
 import audit
 import config
 import state
+import web_detect
 from devices import DeviceError, ios_run, pfsense_run
 
 # ------------------------------------------------------------------ 허용 목록
@@ -145,6 +146,11 @@ TOOLS += [
                     "수동확인 항목을 판정하거나 조치 명령을 만들 때 쓴다.",
      "input_schema": {"type": "object", "properties": {"code": {"type": "string", "description": "예: N-07"}},
                       "required": ["code"]}},
+    {"name": "web_attack_scan",
+     "description": "DMZ 웹 서버(211.0.1.10)의 접속 로그를 가져와 SQL 인젝션·XSS 공격 시도를 출발지 IP별로 요약한다. "
+                    "각 시도의 시그니처와, 앱이 남긴 결과로 추정한 성공 가능성(success_hints)을 함께 돌려준다. 조회만 한다.",
+     "input_schema": {"type": "object", "properties": {
+         "lines": {"type": "integer", "description": "로그 끝에서 몇 줄을 볼지 (기본 400)"}}}},
     {"name": "save_audit_report",
      "description": "점검 결과에 최종 판정과 보고서를 저장한다(대시보드 '보안 점검'에 표시). overrides로 수동확인 항목을 "
                     "판정하거나, 규칙 판정이 맥락상 틀린 경우 근거와 함께 정정한다. report는 관리자용 마크다운 보고서.",
@@ -223,6 +229,11 @@ def run_tool(name, args):
             a = audit.run_audit(devs, actor="agent")
             state.log_audit("agent", "security_audit", f"점검 {a['id']}: {a['summary']}")
             return json.dumps(_audit_brief(a), ensure_ascii=False), False
+
+        if name == "web_attack_scan":
+            rows = web_detect.scan(lines=int(args.get("lines") or 400))
+            state.log_audit("agent", "read", "WEB 공격 로그 분석")
+            return json.dumps({"web_server": web_detect.WEB_HOST, "sources": rows}, ensure_ascii=False), False
 
         if name == "get_checklist_item":
             it = audit.ITEMS.get((args.get("code") or "").upper())

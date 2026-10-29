@@ -4,6 +4,7 @@ import ipaddress
 import json
 import re
 
+import audit
 import config
 import state
 from devices import DeviceError, ios_run, pfsense_run
@@ -132,7 +133,45 @@ TOOLS = [
          "required": ["device", "commands", "reason"]}},
 ]
 
+TOOLS += [
+    {"name": "run_security_audit",
+     "description": "KISA 주요정보통신기반시설 취약점 분석·평가 가이드(2026)의 네트워크 장비 항목 N-01~N-38로 사내 IOS 장비 "
+                    "(CORE1, CORE2, ASW1, ASW2, BRANCH)를 점검한다. 설정·버전·인터페이스·CDP·SNMP를 수집해 규칙으로 1차 판정하고 "
+                    "점검 ID를 돌려준다. 판정은 양호/취약/수동확인이며, 수동확인은 맥락 판단이 필요한 항목이다. 조회만 한다.",
+     "input_schema": {"type": "object", "properties": {
+         "devices": {"type": "array", "items": {"type": "string"}, "description": "생략하면 사내 IOS 장비 5대 전체"}}}},
+    {"name": "get_checklist_item",
+     "description": "KISA 점검 항목 하나의 점검 내용, 양호/취약 판단 기준, 조치 방법, Cisco IOS 점검·조치 예시를 돌려준다. "
+                    "수동확인 항목을 판정하거나 조치 명령을 만들 때 쓴다.",
+     "input_schema": {"type": "object", "properties": {"code": {"type": "string", "description": "예: N-07"}},
+                      "required": ["code"]}},
+    {"name": "save_audit_report",
+     "description": "점검 결과에 최종 판정과 보고서를 저장한다(대시보드 '보안 점검'에 표시). overrides로 수동확인 항목을 "
+                    "판정하거나, 규칙 판정이 맥락상 틀린 경우 근거와 함께 정정한다. report는 관리자용 마크다운 보고서.",
+     "input_schema": {"type": "object", "properties": {
+         "audit_id": {"type": "string"},
+         "overrides": {"type": "array", "items": {"type": "object", "properties": {
+             "code": {"type": "string"}, "device": {"type": "string", "description": "장비 이름 또는 ALL"},
+             "verdict": {"type": "string", "enum": ["양호", "취약", "해당없음"]},
+             "reason": {"type": "string"}}, "required": ["code", "device", "verdict", "reason"]}},
+         "report": {"type": "string"}},
+         "required": ["audit_id", "report"]}},
+]
+
 CHANGE_TOOLS = {"request_firewall_block", "request_firewall_unblock", "request_ios_config"}
+
+
+def _audit_brief(a):
+    """에이전트에게 돌려줄 점검 결과 요약: 양호가 아닌 항목만 장비별 근거와 함께."""
+    rows = []
+    for it in a["items"]:
+        bad = {d: r for d, r in it["results"].items() if r["verdict"] != "양호"}
+        if bad:
+            rows.append({"code": it["code"], "importance": it["importance"], "name": it["name"],
+                         "results": {d: f"{r['verdict']}: {r['evidence'][:220]}" for d, r in bad.items()}})
+    good = [it["code"] for it in a["items"] if all(r["verdict"] == "양호" for r in it["results"].values())]
+    return {"audit_id": a["id"], "devices": a["devices"], "errors": a["errors"], "summary": a["summary"],
+            "all_good_items": good, "needs_attention": rows}
 
 
 # ------------------------------------------------------------------ 실행
@@ -176,6 +215,40 @@ def run_tool(name, args):
                 return json.dumps([{k: v for k, v in a.items() if k != "ts"} for a in state.alerts[-15:]],
                                   ensure_ascii=False), False
 
+        if name == "run_security_audit":
+            devs = [d for d in (args.get("devices") or audit.AUDIT_DEVICES)]
+            for d in devs:
+                if d not in audit.AUDIT_DEVICES:
+                    raise ValueError(f"점검 대상이 아닌 장비: {d}. 대상: {audit.AUDIT_DEVICES}")
+            a = audit.run_audit(devs, actor="agent")
+            state.log_audit("agent", "security_audit", f"점검 {a['id']}: {a['summary']}")
+            return json.dumps(_audit_brief(a), ensure_ascii=False), False
+
+        if name == "get_checklist_item":
+            it = audit.ITEMS.get((args.get("code") or "").upper())
+            if not it:
+                raise ValueError("N-01 ~ N-38 중 하나를 지정하세요.")
+            return json.dumps(it, ensure_ascii=False), False
+
+        if name == "save_audit_report":
+            a = audit.load(args.get("audit_id", ""))
+            ov = args.get("overrides") or []
+            for o in ov:
+                it = next((x for x in a["items"] if x["code"] == o.get("code")), None)
+                if not it:
+                    continue
+                targets = list(it["results"]) if o.get("device") == "ALL" else [o.get("device")]
+                for d in targets:
+                    if d in it["results"]:
+                        it["results"][d].update(final=o["verdict"], reason=o.get("reason", ""))
+            a["report"] = args.get("report", "")
+            a["final_summary"] = audit.summarize([{**it, "results": {d: {"verdict": r.get("final", r["verdict"])}
+                                                                     for d, r in it["results"].items()}}
+                                                  for it in a["items"]])
+            audit.save(a)
+            state.log_audit("agent", "audit_report", f"점검 {a['id']} 보고서 저장 (정정 {len(ov)}건)")
+            return f"점검 {a['id']} 보고서를 저장했습니다. 최종 집계: {a['final_summary']}", False
+
         if name in ("request_firewall_block", "request_firewall_unblock"):
             ip = _external_ip(args.get("ip", ""))
             verb = "차단" if name == "request_firewall_block" else "차단 해제"
@@ -200,6 +273,8 @@ def run_tool(name, args):
         return f"알 수 없는 도구: {name}", True
     except (ValueError, DeviceError) as e:
         return f"오류: {e}", True
+    except OSError:
+        return "오류: 해당 점검 결과를 찾을 수 없습니다. run_security_audit가 돌려준 audit_id를 쓰세요.", True
 
 
 def execute_approved(rec):

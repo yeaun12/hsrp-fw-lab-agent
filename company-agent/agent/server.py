@@ -7,6 +7,7 @@ import os
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import audit
 import brain
 import config
 import monitor
@@ -14,6 +15,7 @@ import state
 import tools
 
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+_audit_running = threading.Event()
 
 
 def _decide(approval_id, approve, actor="관리자"):
@@ -80,7 +82,14 @@ class Handler(BaseHTTPRequestHandler):
             snap["model"] = config.MODEL
             with state.lock:
                 snap["usage"] = dict(brain.usage)
+            snap["audits"] = audit.list_audits()[:3]
+            snap["audit_running"] = _audit_running.is_set()
             self._json(snap)
+        elif self.path.startswith("/api/audit?id="):
+            try:
+                self._json(audit.load(self.path.split("=", 1)[1]))
+            except (OSError, ValueError):
+                self._json({"error": "점검 결과를 찾을 수 없습니다."}, 404)
         else:
             self._json({"error": "not found"}, 404)
 
@@ -91,6 +100,22 @@ class Handler(BaseHTTPRequestHandler):
             if not text:
                 return self._json({"error": "빈 메시지"}, 400)
             brain.submit(text, "admin")
+            return self._json({"ok": True})
+        if self.path == "/api/audit/run":
+            if _audit_running.is_set():
+                return self._json({"error": "점검이 이미 진행 중입니다."}, 409)
+            _audit_running.set()
+
+            def run():
+                try:
+                    a = audit.run_audit(actor="관리자")
+                    state.log_audit("관리자", "security_audit", f"규칙 점검 {a['id']}: {a['summary']}")
+                except Exception as e:
+                    state.log_audit("system", "error", f"보안 점검 실패: {e}")
+                finally:
+                    _audit_running.clear()
+
+            threading.Thread(target=run, daemon=True).start()
             return self._json({"ok": True})
         if self.path == "/api/reset":
             ok = brain.reset_conversation()

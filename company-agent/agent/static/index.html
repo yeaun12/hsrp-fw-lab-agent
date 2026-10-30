@@ -241,7 +241,7 @@ function updateKeyField(){
   const llm = window._llm; const sel = $("#provsel").value;
   const opt = (llm.options||[]).find(o => o.name === sel) || {};
   $("#keyin").style.display = opt.needs_key ? "block" : "none";
-  $("#keyin").placeholder = sel === "gemini" ? "AIza... (Google AI Studio 무료 키)" : sel === "anthropic" ? "sk-ant-..." : "";
+  $("#keyin").placeholder = sel === "gemini" ? "Google AI Studio 키 (AQ. 또는 AIza...)" : sel === "anthropic" ? "sk-ant-..." : "";
   $("#keyhint").textContent = !opt.needs_key ? "Mock은 키가 필요 없습니다. 저장하면 바로 동작합니다."
     : sel === "gemini" ? "aistudio.google.com/apikey 에서 무료 발급. 이미 등록했다면 비워 두면 유지됩니다."
     : "console.anthropic.com 에서 발급. 이미 등록했다면 비워 두면 유지됩니다.";

@@ -140,9 +140,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"error": "알 수 없는 제공자입니다."}, 400)
             cfg = config.PROVIDERS[prov]
             if cfg["key_secret"]:                    # 키가 필요한 제공자
-                prefix = cfg.get("key_prefix", "")
-                if key and prefix and not key.startswith(prefix):
-                    return self._json({"error": f"{cfg['label']} 키는 '{prefix}'로 시작해야 합니다."}, 400)
+                prefixes = cfg.get("key_prefix") or ()
+                if isinstance(prefixes, str):
+                    prefixes = (prefixes,)
+                if key and prefixes and not any(key.startswith(p) for p in prefixes):
+                    return self._json({"error": f"{cfg['label']} 키 형식이 올바르지 않습니다 (예: {', '.join(prefixes)})."}, 400)
                 if key:
                     config.write_secret(cfg["key_secret"], key)
                 elif not config.provider_key(prov):

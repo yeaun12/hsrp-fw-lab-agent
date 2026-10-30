@@ -20,12 +20,14 @@ DEFAULT_PROVIDER = "mock"
 PROVIDERS = {
     "mock":      {"label": "Mock (테스트용, 키 불필요)", "model": "mock-1",
                   "price": {"input": 0, "output": 0}, "key_secret": None, "key_env": None},
-    "gemini":    {"label": "Google Gemini (무료 티어)", "model": "gemini-1.5-flash",
-                  "price": {"input": 0, "output": 0},   # 무료 티어 기준 0 (유료 전환 시 갱신)
-                  "key_secret": "gemini_api_key", "key_env": "GEMINI_API_KEY", "key_prefix": "AIza"},
+    "gemini":    {"label": "Google Gemini (무료 티어)", "model": "gemini-3.5-flash-lite",
+                  # 무료 티어는 입출력 $0 (공식 pricing 기준). 유료 전환 시 갱신.
+                  "price": {"input": 0, "output": 0},
+                  # 2026-05-28 이후 새 키는 'AQ.' 등 auth key 형식, 그 이전은 'AIza'
+                  "key_secret": "gemini_api_key", "key_env": "GEMINI_API_KEY", "key_prefix": ("AIza", "AQ.")},
     "anthropic": {"label": "Anthropic Claude (유료)", "model": "claude-opus-5-5",
                   "price": {"input": 4.00, "output": 20.00, "cache_read": 0.20, "cache_write": 5.00},
-                  "key_secret": "anthropic_api_key", "key_env": "ANTHROPIC_API_KEY", "key_prefix": "sk-ant-"},
+                  "key_secret": "anthropic_api_key", "key_env": "ANTHROPIC_API_KEY", "key_prefix": ("sk-ant-",)},
 }
 
 

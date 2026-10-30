@@ -4,13 +4,14 @@
 Gemini functionDeclarations로, 대화 기록을 Gemini contents로 변환한다.
 """
 import json
+import socket
 import time
 import urllib.error
 import urllib.request
 
 from .base import Provider, Response
 
-ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 
 def _to_contents(messages):
@@ -27,9 +28,15 @@ def _to_contents(messages):
         for b in m["content"]:
             t = b.get("type")
             if t == "text":
-                parts.append({"text": b["text"]})
+                part = {"text": b["text"]}
+                if b.get("sig"):                 # Gemini 3.x thought signature 재전송
+                    part["thoughtSignature"] = b["sig"]
+                parts.append(part)
             elif t == "tool_use":
-                parts.append({"functionCall": {"name": b["name"], "args": b.get("input") or {}}})
+                part = {"functionCall": {"name": b["name"], "args": b.get("input") or {}}}
+                if b.get("sig"):                 # 함수 호출에 thought signature가 없으면 400
+                    part["thoughtSignature"] = b["sig"]
+                parts.append(part)
             elif t == "tool_result":
                 parts.append({"functionResponse": {"name": b.get("name", "tool"),
                                                     "response": {"result": str(b.get("content", ""))}}})
@@ -59,25 +66,33 @@ class GeminiProvider(Provider):
             return False, "Gemini API 키가 없습니다. 대시보드에서 등록하세요 (Google AI Studio 무료 키)."
         return True, ""
 
-    def _post(self, body):
-        url = ENDPOINT.format(model=self.model, key=self.api_key)
+    def _post(self, body, timeout=45, attempts=3):
+        url = ENDPOINT.format(model=self.model)
         data = json.dumps(body).encode()
-        delay = 2
-        for attempt in range(3):
-            req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+        headers = {"Content-Type": "application/json", "x-goog-api-key": self.api_key}  # 신·구 키 형식 모두 지원
+        delay, last = 2, ""
+        for attempt in range(attempts):
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
             try:
-                with urllib.request.urlopen(req, timeout=90) as r:
+                with urllib.request.urlopen(req, timeout=timeout) as r:
                     return json.loads(r.read())
             except urllib.error.HTTPError as e:
                 detail = e.read()[:400].decode(errors="replace")
-                if e.code in (429, 500, 503) and attempt < 2:
-                    time.sleep(delay); delay *= 2; continue
-                raise RuntimeError(f"Gemini HTTP {e.code}: {detail}")
+                last = f"Gemini HTTP {e.code}: {detail}"
+                if e.code in (429, 500, 502, 503, 504) and attempt < attempts - 1:
+                    time.sleep(delay); delay = min(delay * 2, 20); continue
+                raise RuntimeError(last)
+            except (socket.timeout, TimeoutError):      # 읽기/연결 타임아웃 (과부하 시 흔함) -> 재시도
+                last = f"Gemini 응답 지연({timeout}s 초과)"
+                if attempt < attempts - 1:
+                    time.sleep(delay); delay = min(delay * 2, 20); continue
+                raise RuntimeError(last)
             except urllib.error.URLError as e:
-                if attempt < 2:
-                    time.sleep(delay); delay *= 2; continue
-                raise RuntimeError(f"Gemini 연결 실패: {e}")
-        raise RuntimeError("Gemini 호출 재시도 초과")
+                last = f"Gemini 연결 실패: {e.reason}"
+                if attempt < attempts - 1:
+                    time.sleep(delay); delay = min(delay * 2, 20); continue
+                raise RuntimeError(last)
+        raise RuntimeError(last or "Gemini 호출 재시도 초과")
 
     def generate(self, system, messages, tools):
         body = {"systemInstruction": {"parts": [{"text": system}]},
@@ -88,10 +103,14 @@ class GeminiProvider(Provider):
             data = self._post(body)
         except RuntimeError as e:
             msg = str(e)
-            if "HTTP 400" in msg and ("API_KEY" in msg or "API key" in msg):
+            if "HTTP 400" in msg and ("API_KEY" in msg or "API key" in msg or "API key not valid" in msg):
                 return Response([], "error", error="Gemini API 키가 올바르지 않습니다. 키를 다시 등록하세요.")
+            if "HTTP 404" in msg:
+                return Response([], "error", error=f"Gemini 모델({self.model})을 찾을 수 없습니다. 모델명을 확인하세요.")
             if "HTTP 429" in msg:
                 return Response([], "error", error="Gemini 무료 티어 호출 한도에 걸렸습니다. 잠시 후 다시 시도하세요.")
+            if "HTTP 503" in msg or "지연" in msg:
+                return Response([], "error", error="Gemini 모델이 과부하 상태입니다. 잠시 후 다시 시도하거나 다른 무료 모델로 바꿔 보세요.")
             return Response([], "error", error=msg)
 
         cands = data.get("candidates") or []
@@ -102,11 +121,18 @@ class GeminiProvider(Provider):
         parts = (cand.get("content") or {}).get("parts") or []
         content, i = [], 0
         for p in parts:
+            sig = p.get("thoughtSignature")
             if "text" in p and p["text"].strip():
-                content.append({"type": "text", "text": p["text"]})
+                blk = {"type": "text", "text": p["text"]}
+                if sig:
+                    blk["sig"] = sig
+                content.append(blk)
             elif "functionCall" in p:
                 fc = p["functionCall"]
-                content.append({"type": "tool_use", "id": f"gm-{i}", "name": fc["name"], "input": fc.get("args") or {}})
+                blk = {"type": "tool_use", "id": f"gm-{i}", "name": fc["name"], "input": fc.get("args") or {}}
+                if sig:
+                    blk["sig"] = sig
+                content.append(blk)
                 i += 1
         um = data.get("usageMetadata") or {}
         usage = {"input": um.get("promptTokenCount", 0), "output": um.get("candidatesTokenCount", 0)}

@@ -164,6 +164,22 @@ TOOLS += [
          "required": ["audit_id", "report"]}},
 ]
 
+TOOLS += [
+    {"name": "report_investigation",
+     "description": "조사의 결론을 구조화해 기록한다(대시보드 '조사 기록' 패널에 표시). cause_candidates에 원인 후보를 하나 이상 "
+                    "각각 확인 상태와 함께 담고, basis(최종 근거)와 proposed_action(조치 제안)을 모두 채운다. 모델의 비공개 추론이 "
+                    "아니라 도구로 확인한 관측 사실만 근거로 적는다. 장비를 바꾸지 않는 기록 전용 도구다. 조사를 마무리할 때 한 번 호출한다.",
+     "input_schema": {"type": "object", "properties": {
+         "cause_candidates": {"type": "array", "minItems": 1, "description": "원인 후보 목록 (하나 이상)",
+             "items": {"type": "object", "properties": {
+                 "cause": {"type": "string", "description": "원인 후보"},
+                 "status": {"type": "string", "enum": ["확인됨", "배제됨", "의심"], "description": "도구로 확인한 상태"}},
+                 "required": ["cause", "status"]}},
+         "basis": {"type": "string", "description": "최종 판단 근거 (어느 장비에서 무엇을 봤는지)"},
+         "proposed_action": {"type": "string", "description": "권고 조치 (없으면 '조치 불필요')"}},
+         "required": ["cause_candidates", "basis", "proposed_action"]}},
+]
+
 CHANGE_TOOLS = {"request_firewall_block", "request_firewall_unblock", "request_ios_config"}
 
 
@@ -280,6 +296,19 @@ def run_tool(name, args):
                                      args.get("reason", ""))
             return (f"승인 요청 #{rec['id']}을 등록했습니다 ({dev} 설정 {len(cmds)}줄). "
                     "관리자가 승인하기 전에는 실행되지 않습니다."), False
+
+        if name == "report_investigation":
+            c = state.current_case()
+            cands = [{"cause": str(x.get("cause", "")), "status": x.get("status", "의심")}
+                     for x in (args.get("cause_candidates") or []) if x.get("cause")]
+            with state.lock:
+                if c:
+                    c["cause_candidates"] = cands
+                    c["basis"] = str(args.get("basis", "")) or c["basis"]
+                    c["proposed_action"] = str(args.get("proposed_action", ""))
+                    c["updated"] = state.now()
+            state.save_cases()
+            return "조사 기록을 저장했습니다. (대시보드 '조사 기록'에 표시됩니다)", False
 
         return f"알 수 없는 도구: {name}", True
     except (ValueError, DeviceError) as e:

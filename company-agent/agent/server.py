@@ -42,6 +42,12 @@ def _decide(approval_id, approve, actor="관리자"):
             result, status = f"실행 실패: {type(e).__name__}: {e}", "failed"
         with state.lock:
             rec.update(status=status, result=result)
+            c = state.get_case(rec.get("case_id"))
+            if c:                                    # 실행 결과를 조사 건에 연결하고 재검증 단계로
+                c["execution_result"] = result
+                c["status"] = "verifying"
+                c["updated"] = state.now()
+        state.save_cases()
         state.log_audit("agent", "executed" if status == "done" else "failed", f"#{rec['id']} {result.splitlines()[0]}")
         brain.submit(f"[관리자 승인] 승인 요청 #{rec['id']}({rec['summary']})을 실행했습니다.\n실행 결과:\n{result}\n"
                      "의도대로 적용됐는지 조회로 검증하고 보고하세요.", "approval")

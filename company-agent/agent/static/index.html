@@ -56,6 +56,15 @@ details.case .k{font-size:11.5px;color:var(--muted);margin-top:6px}
 details.case .cbox{font-size:12.5px;white-space:pre-wrap;background:var(--code);padding:6px;border-radius:6px;margin-top:2px}
 details.case ul.cands{margin:4px 0;padding-left:4px;list-style:none}details.case ul.cands li{margin:3px 0}
 details.case pre{white-space:pre-wrap;background:var(--code);padding:6px;border-radius:6px;max-height:200px;overflow:auto;font-size:11.5px}
+.kpis{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.kpi{flex:1 1 76px;background:var(--chip);border-radius:8px;padding:8px 10px;min-width:76px}
+.kpi .n{font-size:18px;font-weight:600}.kpi .l{font-size:11px;color:var(--muted)}
+.bars{margin:4px 0 8px}.bar{display:flex;align-items:center;gap:6px;margin:2px 0;font-size:11.5px}
+.bar .lab{width:92px;color:var(--muted);text-align:right;flex:0 0 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .track{flex:1;background:var(--code);border-radius:4px;height:15px;position:relative}
+.bar .fill{background:var(--accent);height:100%;border-radius:4px;min-width:2px}
+.bar .v{position:absolute;right:5px;top:0;font-size:10.5px;line-height:15px;color:var(--ink)}
+.an-h{font-size:11.5px;color:var(--muted);margin:8px 0 2px;font-weight:600}
 </style>
 </head>
 <body>
@@ -81,6 +90,8 @@ details.case pre{white-space:pre-wrap;background:var(--code);padding:6px;border-
   </section>
   <div class="col">
     <section class="panel"><h2>조사 기록 (AI 판단 근거) <span class="count" id="casecount"></span></h2><div class="body" id="cases" style="max-height:380px"></div></section>
+    <section class="panel"><h2>운영 분석 (KPI) <span class="spacer"></span><button class="ghost" id="anbtn" style="font-size:12px;padding:4px 10px">분석 새로고침</button></h2>
+      <div class="body" id="analytics" style="max-height:440px"><div class="empty">"분석 새로고침"을 누르면 저장된 운영 데이터(Phase 5 파이프라인)로 KPI를 계산해 보여줍니다.</div></div></section>
     <section class="panel"><h2>승인 대기 <span class="count" id="apprcount"></span></h2><div class="body" id="approvals"></div></section>
     <section class="panel"><h2>보안 점검 (KISA 네트워크 장비) <span class="spacer"></span>
       <button class="ghost" id="auditrule" style="font-size:12px;padding:4px 10px" title="API 키 없이 규칙으로만 판정합니다">규칙 점검</button>
@@ -288,6 +299,40 @@ $("#resetbtn").onclick = async () => {
   const r = await post("/api/reset", {}); if (r.error) alert(r.error); refresh();
 };
 $("#keysave").onclick = async e => { e.preventDefault(); const r = await post("/api/apikey",{provider:$("#provsel").value, key:$("#keyin").value}); $("#keyin").value=""; if (r.error) alert(r.error); else $("#keydlg").close(); refresh(); };
+function bars(items, labelKey, valKey){
+  if (!items || !items.length) return `<div class="empty" style="font-size:11.5px">데이터 없음</div>`;
+  const m = Math.max(1, ...items.map(i => i[valKey]));
+  return `<div class="bars">` + items.map(i =>
+    `<div class="bar"><span class="lab" title="${esc(String(i[labelKey]))}">${esc(String(i[labelKey]))}</span>` +
+    `<span class="track"><span class="fill" style="width:${Math.round(100*i[valKey]/m)}%"></span><span class="v">${i[valKey]}</span></span></div>`).join("") + `</div>`;
+}
+async function loadAnalytics(){
+  $("#anbtn").disabled = true; $("#analytics").innerHTML = `<div class="empty">계산 중...</div>`;
+  try {
+    const k = await (await fetch("/api/analytics")).json();
+    if (k.error){ $("#analytics").innerHTML = `<div class="empty">분석 실패: ${esc(k.error)}</div>`; return; }
+    const u = k.usage || {}; const pct = v => v==null ? "-" : Math.round(v*100)+"%";
+    const hm = {}; (k.security_by_hour||[]).forEach(r => hm[r.hour]=r.n);
+    const hours = Array.from({length:24},(_,h)=>({hour:h+"시",n:hm[h]||0})).filter(x=>x.n>0);
+    const ev = (k.events_by_type||[]).map(e => ({t:`${e.event_type} (${e.category})`, n:e.n}));
+    $("#analytics").innerHTML = `
+      <div class="kpis">
+        <div class="kpi"><div class="n">${k.incidents_total}</div><div class="l">사건</div></div>
+        <div class="kpi"><div class="n">${pct(k.agent_success_rate)}</div><div class="l">실행 성공률</div></div>
+        <div class="kpi"><div class="n">${k.avg_resolution_sec}s</div><div class="l">평균 조사·해결</div></div>
+        <div class="kpi"><div class="n">${pct(k.tool_error_rate)}</div><div class="l">도구 오류율</div></div>
+        <div class="kpi"><div class="n">$${(u.usd||0).toFixed(2)}</div><div class="l">API 비용 · 호출 ${u.calls||0}</div></div>
+      </div>
+      <div class="an-h">사건 상태</div>${bars(k.incidents_by_status,"status","n")}
+      <div class="an-h">장비별 장애 빈도</div>${bars(k.incidents_by_device,"device","n")}
+      <div class="an-h">일자별 사건</div>${bars(k.incidents_daily,"day","n")}
+      <div class="an-h">이벤트 유형 Top</div>${bars(ev,"t","n")}
+      ${hours.length ? `<div class="an-h">시간대별 보안 이벤트</div>${bars(hours,"hour","n")}` : ""}
+      <div class="meta" style="margin-top:6px">승인 ${k.approvals.approved} · 거부 ${k.approvals.rejected} · 승인비율 ${pct(k.approvals.approve_ratio)}${k.ingest?` · 적재 읽음 ${k.ingest.read}`:""}</div>`;
+  } catch(e){ $("#analytics").innerHTML = `<div class="empty">분석 호출 실패: ${esc(e.message)}</div>`; }
+  finally { $("#anbtn").disabled = false; }
+}
+$("#anbtn").onclick = loadAnalytics;
 refresh(); setInterval(refresh, 2000);
 </script>
 </body>

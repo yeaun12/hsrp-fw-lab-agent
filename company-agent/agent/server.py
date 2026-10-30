@@ -100,6 +100,18 @@ class Handler(BaseHTTPRequestHandler):
             snap["audits"] = audit.list_audits()[:3]
             snap["audit_running"] = _audit_running.is_set()
             self._json(snap)
+        elif self.path == "/api/analytics":
+            try:
+                import warehouse
+                import analytics
+                db = os.path.join(config.DATA_DIR, "ops_dw.sqlite")
+                conn, stats = warehouse.ingest(config.DATA_DIR, db)   # 최신 로그를 멱등 적재
+                k = analytics.kpis(conn)
+                conn.close()
+                k["ingest"] = stats
+                self._json(k)
+            except Exception as e:
+                self._json({"error": f"{type(e).__name__}: {e}"}, 500)
         elif self.path == "/api/webattacks":
             try:
                 self._json({"sources": web_detect.scan(lines=400)})

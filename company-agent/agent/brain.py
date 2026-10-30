@@ -153,16 +153,23 @@ def _open_or_continue_case(source, user_text):
 
 def _finalize_case(case, source, last_text):
     """턴이 끝나면 조사 건 상태를 정리한다. 승인 대기가 남아 있으면 그대로 둔다."""
+    # 에이전트가 선언한 결론 상태를 사건 상태로 정직하게 반영한다(미해결을 해결로 표시하지 않음).
+    res_map = {"미해결": "unresolved", "확인요청": "needs_confirm", "해결": "resolved", "정보제공": "resolved"}
     with state.lock:
         if not case["basis"] and last_text:        # report_investigation 미호출 시 마지막 답변으로 폴백
             case["basis"] = last_text[:800]
         pending = any(a["status"] == "pending" for a in state.approvals if a.get("case_id") == case["id"])
-        if source == "approval":
-            if last_text:
-                case["reverification"] = last_text[:800]
-            case["status"] = "resolved"
+        if source == "approval" and last_text:
+            case["reverification"] = last_text[:800]
+        if pending:
+            case["status"] = "awaiting_approval"
+        elif case.get("resolution"):
+            case["status"] = res_map[case["resolution"]]
+        elif case.get("tools"):
+            # 조사 도구를 썼는데 에이전트가 '해결'을 명시하지 않았다 → 억지로 해결로 표시하지 않고 확인요청으로 둔다.
+            case["status"] = "needs_confirm"
         else:
-            case["status"] = "awaiting_approval" if pending else "resolved"
+            case["status"] = "resolved"   # 도구 없이 끝난 단순 질의응답
         case["elapsed_sec"] = int(time.time() - case["ts"])
         case["updated"] = state.now()
     state.save_cases()

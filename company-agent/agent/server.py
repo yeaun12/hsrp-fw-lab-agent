@@ -35,6 +35,11 @@ def _decide(approval_id, approve, actor="관리자"):
 
     def run():
         state.log_audit(actor, "approved", f"#{rec['id']} {rec['summary']}")
+        with state.lock:                             # 승인 실행 시작 → 사건 상태 '조치중'
+            c = state.get_case(rec.get("case_id"))
+            if c:
+                c["status"] = "executing"
+                c["updated"] = state.now()
         try:
             result = tools.execute_approved(rec)
             status = "done"

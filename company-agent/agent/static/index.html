@@ -51,7 +51,7 @@ table.grid th{color:var(--muted);font-weight:500}.dot{display:inline-block;width
 dialog{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);max-width:420px}
 dialog input{width:100%;padding:8px;margin:8px 0;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
 details.case{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px}
-details.case>summary{cursor:pointer;font-size:13px}details.case[data-st=resolved]{border-color:var(--ok)}details.case[data-st=awaiting_approval]{border-color:var(--accent)}
+details.case>summary{cursor:pointer;font-size:13px}details.case[data-st=resolved]{border-color:var(--ok)}details.case[data-st=awaiting_approval]{border-color:var(--accent)}details.case[data-st=unresolved]{border-color:var(--bad)}
 details.case .k{font-size:11.5px;color:var(--muted);margin-top:6px}
 details.case .cbox{font-size:12.5px;white-space:pre-wrap;background:var(--code);padding:6px;border-radius:6px;margin-top:2px}
 details.case ul.cands{margin:4px 0;padding-left:4px;list-style:none}details.case ul.cands li{margin:3px 0}
@@ -155,6 +155,7 @@ function renderApprovals(list){
   $("#approvals").innerHTML = list.map(a => `<div class="appr ${a.status}">
     <b>#${a.id} ${esc(a.summary)}</b><div class="meta empty">${esc(a.time)} · ${st[a.status]}</div>
     <div style="margin-top:4px">사유: ${esc(a.reason)}</div>
+    ${a.change ? `<div class="meta" style="margin-top:4px">변경관리: 명령 일치·정책 검증 ${a.change.cmd_verified?"✓":"✗"}${a.change.rolled_back?" · 실패→롤백함":""}${a.change.backup_lines?` · 백업 ${a.change.backup_lines}줄`:""}</div>` : ""}
     ${a.result ? `<pre>${esc(a.result)}</pre>` : ""}
     ${a.status === "pending" ? `<div class="actions"><button onclick="decide(${a.id},true)">승인</button><button class="danger" onclick="decide(${a.id},false)">거부</button></div>` : ""}
   </div>`).join("") || `<div class="empty">승인을 기다리는 변경이 없습니다.</div>`;
@@ -197,7 +198,7 @@ document.addEventListener("toggle", e => { if (e.target.matches("details.case"))
 function renderCases(list){
   list = list || [];
   $("#casecount").textContent = list.length ? `${list.length}건` : "";
-  const stm = {investigating:["조사 중","수동확인"], awaiting_approval:["승인 대기","수동확인"], verifying:["검증 중","수동확인"], resolved:["완료","양호"]};
+  const stm = {investigating:["조사 중","수동확인"], awaiting_approval:["승인 대기","수동확인"], executing:["조치 중","수동확인"], verifying:["검증 중","수동확인"], resolved:["해결","양호"], unresolved:["미해결","취약"], needs_confirm:["확인 요청","수동확인"]};
   const cv = s => s === "확인됨" ? "취약" : s === "배제됨" ? "해당없음" : "수동확인";
   $("#cases").innerHTML = list.map((c, i) => {
     const [slabel, scls] = stm[c.status] || [c.status, "수동확인"];

@@ -54,7 +54,7 @@ def open_case(source, trigger):
         rec = {"id": next(_ids), "started": now(), "ts": time.time(), "source": source,
                "trigger": trigger, "model": "", "provider": "", "status": "investigating",
                "steps": 0, "tools": [], "devices": [], "cause_candidates": [], "basis": "",
-               "proposed_action": "", "approval_ids": [], "execution_result": "",
+               "proposed_action": "", "resolution": "", "reported": False, "approval_ids": [], "execution_result": "",
                "reverification": "", "elapsed_sec": 0,
                "tokens": {"calls": 0, "input": 0, "output": 0}, "updated": now()}
         cases.append(rec)

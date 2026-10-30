@@ -325,7 +325,8 @@ def run_tool(name, args):
 
 def _config_diff(before, after):
     """IOS running-config 두 스냅샷의 줄 차이를 요약한다(순서 무시, 주석/빈 줄 제외)."""
-    norm = lambda t: [l.rstrip() for l in t.splitlines() if l.strip() and not l.strip().startswith("!")]
+    skip = ("!", "Current configuration", "Building configuration", "Load for", "Time source", "ntp clock-period")
+    norm = lambda t: [l.rstrip() for l in t.splitlines() if l.strip() and not l.strip().startswith(skip)]
     b, a = norm(before), norm(after)
     bset, aset = set(b), set(a)
     lines = [f"+ {l.strip()}" for l in a if l not in bset] + [f"- {l.strip()}" for l in b if l not in aset]

@@ -43,11 +43,14 @@ Phase 2의 조사 기록(case)을 **사건(incident)**으로 정식화하고, �
 - **변경 관리 순수 로직(오프라인 단위 테스트)**: `_config_diff`(추가 줄만 정확히 추출), `_inverse_commands`(역순·토글),
   실행 계층 정책 검증(`username ...` 차단, 정상 명령 통과) 검증. ✓
 - **대시보드**: 확인요청/해결 배지, 승인 카드의 "변경관리: 명령 일치·정책 검증 ✓ · 백업 142줄" + 전후 차이 렌더 확인. ✓
+- **IOS 변경 라이브 검증(실제 CORE1, lab_up.py로 랩 복구 후, 2026-10-30)**: `_apply_ios_change`를 실제 장비에 적용.
+  - 성공 경로: `interface Loopback99` + `description` → 백업 207줄 캡처 → 적용 → 전후 diff가 추가 2줄만 정확히 표시
+    → write memory 저장. 장비에서 Loopback99 생성 확인. cmd_verified=True, rolled_back=False. ✓
+  - 실패→롤백 경로: 잘못된 명령(`zzz badcommand`) 주입 → `% Invalid input` 감지 → **저장 없이 역명령 롤백**
+    → rollback_diff "차이 없음(원상복구)". 장비에서 Loopback98 미존재 확인(롤백됨). rolled_back=True. ✓
+  - 즉 백업·실행계층 검증·적용·전후비교·실패감지·안전롤백·성공시저장 전 과정을 실제 IOS에서 검증 완료.
 
-## 6. 한계 (정직한 기록 — 라이브 검증 대기)
-- **IOS 설정 변경의 실제 적용·전후 비교·롤백은 라이브 검증하지 못했다.** 검증 시점에 GNS3 랩 장비가
-  미기동(No route to host)이라 `_apply_ios_change`의 장치 I/O 경로는 **구현완료 / 라이브 검증 대기** 상태다.
-  랩 복구(lab_up.py) 후 실제 변경·실패 주입·롤백을 재확인해야 한다.
+## 6. 한계 (정직한 기록)
 - **역명령 롤백은 추가형 leaf 변경에 적합**하다. `interface Vlan30` 같은 서브모드 컨텍스트 줄의 단순 역명령
   (`no interface Vlan30`)은 위험할 수 있어, 운영 환경에서는 `configure replace`(백업 파일 기반 전체 복원)가 정석이다.
   본 구현은 랩 수준의 안전 롤백이며 이 점을 설계 결정으로 남긴다.

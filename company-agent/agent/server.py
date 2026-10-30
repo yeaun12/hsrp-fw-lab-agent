@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import audit
 import brain
 import config
+import providers
 import web_detect
 import monitor
 import state
@@ -79,8 +80,10 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
         elif self.path == "/api/state":
             snap = state.snapshot()
-            snap["api_key_set"] = brain.api_key_set()
-            snap["model"] = config.MODEL
+            info = providers.provider_info()
+            snap["llm"] = info
+            snap["api_key_set"] = info["ready"]      # 하위 호환
+            snap["model"] = info["model"]
             with state.lock:
                 snap["usage"] = dict(brain.usage)
             snap["audits"] = audit.list_audits()[:3]
@@ -131,19 +134,29 @@ class Handler(BaseHTTPRequestHandler):
             rec = _decide(int(data.get("id", 0)), self.path == "/api/approve")
             return self._json({"ok": rec is not None})
         if self.path == "/api/apikey":
+            prov = (data.get("provider") or "").strip()
             key = (data.get("key") or "").strip()
-            if not key.startswith("sk-ant-"):
-                return self._json({"error": "sk-ant- 로 시작하는 Claude API 키를 입력하세요."}, 400)
-            config.write_secret("anthropic_api_key", key)
-            state.log_audit("관리자", "api_key_set", "Claude API 키 등록 (값은 기록하지 않음)")
-            return self._json({"ok": True})
+            if prov not in config.PROVIDERS:
+                return self._json({"error": "알 수 없는 제공자입니다."}, 400)
+            cfg = config.PROVIDERS[prov]
+            if cfg["key_secret"]:                    # 키가 필요한 제공자
+                prefix = cfg.get("key_prefix", "")
+                if key and prefix and not key.startswith(prefix):
+                    return self._json({"error": f"{cfg['label']} 키는 '{prefix}'로 시작해야 합니다."}, 400)
+                if key:
+                    config.write_secret(cfg["key_secret"], key)
+                elif not config.provider_key(prov):
+                    return self._json({"error": f"{cfg['label']} API 키를 입력하세요."}, 400)
+            config.write_secret("llm_provider", prov)
+            state.log_audit("관리자", "llm_set", f"모델 제공자 {prov} 선택" + (" + 키 등록" if key else ""))
+            return self._json({"ok": True, "llm": providers.provider_info()})
         self._json({"error": "not found"}, 404)
 
 
 def main():
     brain.start()
     monitor.start()
-    state.log_audit("system", "start", f"에이전트 시작 (모델 {config.MODEL})")
+    state.log_audit("system", "start", f"에이전트 시작 (제공자 {config.active_provider()})")
     server = ThreadingHTTPServer((config.LISTEN_HOST, config.LISTEN_PORT), Handler)
     server.serve_forever()
 

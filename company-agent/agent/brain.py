@@ -5,9 +5,8 @@ import queue
 import threading
 import time
 
-import anthropic
-
 import config
+import providers
 import state
 import tools
 
@@ -62,24 +61,24 @@ _queue = queue.Queue()
 _HISTORY_FILE = os.path.join(config.DATA_DIR, "messages.json")
 _USAGE_FILE = os.path.join(config.DATA_DIR, "usage.json")
 
-# 비용 추정용 단가 (claude-opus-5-5, USD / 100만 토큰). 캐시 쓰기는 입력 단가의 1.25배(5분 TTL).
-PRICE = {"input": 4.00, "cache_write": 5.00, "cache_read": 0.20, "output": 20.00}
-usage = {"calls": 0, "input": 0, "cache_write": 0, "cache_read": 0, "output": 0, "usd": 0.0}
+# 누적 사용량. usd는 제공자 단가로 호출마다 더한다(무료 모델은 0).
+usage = {"calls": 0, "input": 0, "cache_write": 0, "cache_read": 0, "output": 0, "usd": 0.0, "provider": config.active_provider()}
 
 
-def _record_usage(u):
-    """응답의 usage를 누적하고 파일에 남긴다 (대시보드에 추정 비용으로 표시)."""
-    add = {"input": u.input_tokens or 0, "cache_write": getattr(u, "cache_creation_input_tokens", 0) or 0,
-           "cache_read": getattr(u, "cache_read_input_tokens", 0) or 0, "output": u.output_tokens or 0}
+def _record_usage(u, provider):
+    """한 번의 모델 호출 사용량을 누적하고 파일에 남긴다. 그 호출의 비용(USD)을 돌려준다."""
+    cost = provider.cost_usd(u)
     with state.lock:
         usage["calls"] += 1
-        for k, v in add.items():
-            usage[k] += v
-        usage["usd"] = round(sum(usage[k] * PRICE[k] for k in PRICE) / 1_000_000, 4)
+        usage["provider"] = provider.name
+        for k in ("input", "output", "cache_read", "cache_write"):
+            usage[k] += u.get(k, 0)
+        usage["usd"] = round(usage["usd"] + cost, 6)
         snap = dict(usage)
     os.makedirs(config.DATA_DIR, exist_ok=True)
     with open(_USAGE_FILE, "w", encoding="utf-8") as f:
         json.dump(snap, f)
+    return cost
 
 
 def reset_conversation():
@@ -94,12 +93,15 @@ def reset_conversation():
     return True
 
 
+def provider_ready():
+    """활성 제공자가 응답 가능한 상태인지 (Mock은 항상 True)."""
+    ok, _ = providers.get_provider().available()
+    return ok
+
+
+# 하위 호환: 기존 호출부가 쓰던 이름
 def api_key_set():
-    return bool(config.read_secret("anthropic_api_key"))
-
-
-def _client():
-    return anthropic.Anthropic(api_key=config.read_secret("anthropic_api_key"), max_retries=3)
+    return provider_ready()
 
 
 def _save():
@@ -126,69 +128,54 @@ def _load():
 def submit(text, source):
     """관리자 메시지, 감시 알림, 승인 결과를 에이전트 작업 큐에 넣는다."""
     state.add_chat(source, text)
-    if not api_key_set():
-        state.add_chat("system", "Claude API 키가 아직 설정되지 않아 에이전트가 답하지 않습니다. 대시보드 오른쪽 위에서 키를 등록하세요.")
+    ok, msg = providers.get_provider().available()
+    if not ok:
+        state.add_chat("system", msg + " (대시보드 오른쪽 위에서 모델·키를 설정하세요. Mock 모델은 키 없이 동작합니다.)")
         return
     _queue.put(text)
 
 
 def _run_turn(user_text):
     _messages.append({"role": "user", "content": user_text})
-    client = _client()
+    provider = providers.get_provider()
+    run_cost, last_call = 0.0, None
     for _ in range(config.MAX_AGENT_STEPS):
-        try:
-            resp = client.beta.messages.create(
-                model=config.MODEL,
-                max_tokens=16000,
-                system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
-                tools=tools.TOOLS,
-                messages=_messages,
-                cache_control={"type": "ephemeral"},   # 대화 기록 끝까지 자동 캐시: 이전 기록은 캐시 단가로 읽힘
-                output_config={"effort": config.EFFORT},
-                betas=["server-side-fallback-2026-07-01"],
-                fallbacks="default",
-            )
-        except anthropic.AuthenticationError:
-            state.add_chat("system", "Claude API 키가 올바르지 않습니다. 키를 다시 등록하세요.")
-            return
-        except anthropic.RateLimitError:
-            state.add_chat("system", "Claude API 사용량 한도에 걸렸습니다. 잠시 후 다시 시도하세요.")
-            return
-        except anthropic.APIStatusError as e:
-            state.add_chat("system", f"Claude API 오류 ({e.status_code}): {e.message}")
-            return
-        except anthropic.APIConnectionError:
-            state.add_chat("system", "Claude API에 연결하지 못했습니다. 에이전트 PC의 인터넷 연결(NAT)을 확인하세요.")
-            return
+        resp = provider.generate(SYSTEM_PROMPT, _messages, tools.TOOLS)
+        run_cost += _record_usage(resp.usage, provider)
 
-        _record_usage(resp.usage)
-        content = resp.to_dict()["content"]
-        _messages.append({"role": "assistant", "content": content})
+        if resp.stop_reason == "error":
+            state.add_chat("system", resp.error or "모델 호출 오류")
+            return
+        _messages.append({"role": "assistant", "content": resp.content})
         _save()
-        for block in content:
-            if block.get("type") == "text" and block.get("text", "").strip():
-                state.add_chat("agent", block["text"])
+        for t in resp.text_blocks:
+            state.add_chat("agent", t)
 
         if resp.stop_reason == "refusal":
-            state.add_chat("system", "모델이 이 요청에 대한 응답을 거부했습니다.")
+            state.add_chat("system", "모델이 이 요청에 대한 응답을 거부했습니다." + (f" ({resp.error})" if resp.error else ""))
             return
-        if resp.stop_reason == "pause_turn":
-            continue
         if resp.stop_reason == "max_tokens":
             state.add_chat("system", "응답이 길이 제한에 걸려 중간에 끊겼습니다.")
             return
         if resp.stop_reason != "tool_use":
             return
+        if config.RUN_BUDGET_USD and run_cost > config.RUN_BUDGET_USD:
+            state.add_chat("system", f"이번 작업 비용이 상한(${config.RUN_BUDGET_USD})을 넘어 중단했습니다.")
+            return
 
         results = []
-        for block in content:
-            if block.get("type") != "tool_use":
-                continue
-            args = block.get("input") or {}
-            state.add_chat("tool", f"{block['name']} {json.dumps(args, ensure_ascii=False)}", tool=block["name"])
-            out, is_error = tools.run_tool(block["name"], args)
-            state.add_chat("tool_result", out[:2000], tool=block["name"], error=is_error)
-            results.append({"type": "tool_result", "tool_use_id": block["id"], "content": out, "is_error": is_error})
+        for block in resp.tool_uses:
+            name, args = block["name"], (block.get("input") or {})
+            sig = (name, json.dumps(args, ensure_ascii=False, sort_keys=True))
+            state.add_chat("tool", f"{name} {sig[1]}", tool=name)
+            if sig == last_call:   # 직전과 완전히 같은 호출은 재실행하지 않는다
+                out, is_error = "오류: 직전과 동일한 도구 호출이라 반복 실행하지 않았습니다.", True
+            else:
+                out, is_error = tools.run_tool(name, args)
+                last_call = sig
+            state.add_chat("tool_result", out[:2000], tool=name, error=is_error)
+            results.append({"type": "tool_result", "tool_use_id": block.get("id", name),
+                            "name": name, "content": out, "is_error": is_error})
         _messages.append({"role": "user", "content": results})
         _save()
     state.add_chat("system", f"도구 호출이 {config.MAX_AGENT_STEPS}회를 넘어 이번 작업을 멈췄습니다.")

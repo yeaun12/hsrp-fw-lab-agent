@@ -34,7 +34,7 @@ GNS3에서 ADMIN-PC 콘솔을 열고 로그인하면, 대시보드(`http://10.0.
    ```
    프로젝트를 열고, 코어 VLAN 복구·코어 재부팅·AGENT-PC 인터넷 연결까지 처리합니다. 약 10~15분 걸립니다.
 2. **대시보드 열기**: ADMIN-PC에 로그인하면 자동으로 열립니다 (호스트에서는 http://127.0.0.1:8080)
-3. **Claude API 키 등록**: 오른쪽 위 **API 키 설정** 버튼. 키는 [console.anthropic.com](https://console.anthropic.com) → API Keys에서 발급합니다.
+3. **LLM 모델 설정** (오른쪽 위 **모델 설정** 버튼): 기본은 **Mock**(키 없이 제어 흐름 테스트)입니다. 실제 AI 판단은 **Gemini**(무료, [aistudio.google.com/apikey](https://aistudio.google.com/apikey)) 또는 **Claude**(유료, [console.anthropic.com](https://console.anthropic.com))를 선택하고 키를 등록합니다. 키는 에이전트 PC에만 저장됩니다. 제공자 어댑터 구조라 모델을 바꿀 수 있습니다(`agent/providers/`).
    키는 AGENT-PC의 `/opt/lab-agent/secrets/`에만 저장되고 화면·로그에 다시 나오지 않습니다.
 
 ## 시연 시나리오

@@ -58,7 +58,7 @@ dialog input{width:100%;padding:8px;margin:8px 0;border:1px solid var(--line);bo
   <span class="chip" id="model"></span>
   <span class="chip" id="busy">대기 중</span>
   <span class="chip" id="poll"></span>
-  <span class="chip" id="cost" title="응답의 usage로 계산한 추정치입니다. 정확한 금액은 Claude 콘솔에서 확인하세요."></span>
+  <span class="chip" id="cost" title="응답의 usage로 계산한 추정치입니다. 무료 모델은 $0입니다."></span>
   <span class="spacer"></span>
   <button class="ghost" id="keybtn">API 키 설정</button>
 </header>
@@ -100,10 +100,12 @@ dialog input{width:100%;padding:8px;margin:8px 0;border:1px solid var(--line);bo
   <div style="overflow:auto;max-height:60vh"><table class="grid" id="audittable"></table></div>
 </dialog>
 <dialog id="keydlg"><form method="dialog" id="keyform">
-  <b>Claude API 키 등록</b>
-  <div class="empty">키는 에이전트 PC(/opt/lab-agent/secrets)에만 저장되고 화면이나 로그에 다시 표시되지 않습니다.</div>
-  <input type="password" id="keyin" placeholder="sk-ant-..." autocomplete="off">
-  <div style="display:flex;gap:8px;justify-content:flex-end"><button value="cancel" class="ghost">취소</button><button id="keysave" value="default">저장</button></div>
+  <b>LLM 모델 설정</b>
+  <div class="empty">Mock은 키 없이 제어 흐름을 테스트합니다. Gemini는 무료 티어, Claude는 유료입니다. 키는 에이전트 PC에만 저장되고 다시 표시되지 않습니다.</div>
+  <select id="provsel" style="width:100%;padding:8px;margin:8px 0;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)"></select>
+  <input type="password" id="keyin" placeholder="API 키" autocomplete="off">
+  <div class="empty" id="keyhint" style="margin-top:4px"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button value="cancel" class="ghost">취소</button><button id="keysave" value="default">저장</button></div>
 </form></dialog>
 <script>
 const $ = s => document.querySelector(s);
@@ -167,10 +169,12 @@ function renderStatus(s){
 async function refresh(){
   try {
     const r = await fetch("/api/state"); const d = await r.json();
-    $("#model").textContent = d.model;
+    window._llm = d.llm;
+    $("#model").textContent = (d.llm ? d.llm.label.split(" (")[0] + " · " + d.llm.model : d.model) + (d.llm && !d.llm.ready ? " ⚠" : "");
+    $("#model").title = d.llm && !d.llm.ready ? d.llm.message : "활성 LLM 제공자와 모델";
     $("#busy").textContent = d.agent_busy ? "에이전트 작업 중..." : "대기 중";
     $("#busy").className = "chip" + (d.agent_busy ? " ok" : "");
-    $("#keybtn").textContent = d.api_key_set ? "API 키 변경" : "API 키 설정 필요";
+    $("#keybtn").textContent = d.llm && d.llm.ready ? "모델 설정" : "모델·키 설정 필요";
     const u = d.usage || {}; const inTok = (u.input||0) + (u.cache_write||0) + (u.cache_read||0);
     $("#cost").textContent = `API 사용 ≈ $${(u.usd||0).toFixed(2)} · 호출 ${u.calls||0}회` +
       (inTok ? ` · 캐시 적중 ${Math.round(100*(u.cache_read||0)/inTok)}%` : "");
@@ -228,12 +232,27 @@ async function post(path, body){ const r = await fetch(path,{method:"POST",heade
 async function decide(id, ok){ if (!ok || confirm(`승인 요청 #${id}을 실행할까요?`)) { await post(ok?"/api/approve":"/api/reject",{id}); refresh(); } }
 $("#ask").addEventListener("submit", async e => { e.preventDefault(); const t = $("#q").value.trim(); if (!t) return; $("#q").value=""; stickBottom = true; await post("/api/chat",{text:t}); refresh(); });
 document.querySelectorAll(".suggest button").forEach(b => b.onclick = async () => { stickBottom = true; await post("/api/chat",{text:b.dataset.q}); refresh(); });
-$("#keybtn").onclick = () => $("#keydlg").showModal();
+function fillProviderDialog(){
+  const llm = window._llm; if (!llm) return;
+  $("#provsel").innerHTML = llm.options.map(o => `<option value="${o.name}" ${o.name===llm.provider?"selected":""}>${esc(o.label)}</option>`).join("");
+  updateKeyField();
+}
+function updateKeyField(){
+  const llm = window._llm; const sel = $("#provsel").value;
+  const opt = (llm.options||[]).find(o => o.name === sel) || {};
+  $("#keyin").style.display = opt.needs_key ? "block" : "none";
+  $("#keyin").placeholder = sel === "gemini" ? "AIza... (Google AI Studio 무료 키)" : sel === "anthropic" ? "sk-ant-..." : "";
+  $("#keyhint").textContent = !opt.needs_key ? "Mock은 키가 필요 없습니다. 저장하면 바로 동작합니다."
+    : sel === "gemini" ? "aistudio.google.com/apikey 에서 무료 발급. 이미 등록했다면 비워 두면 유지됩니다."
+    : "console.anthropic.com 에서 발급. 이미 등록했다면 비워 두면 유지됩니다.";
+}
+$("#provsel").onchange = updateKeyField;
+$("#keybtn").onclick = () => { fillProviderDialog(); $("#keydlg").showModal(); };
 $("#resetbtn").onclick = async () => {
   if (!confirm("새 대화를 시작할까요? 지금까지의 대화는 보관되고, 에이전트는 이전 내용을 기억하지 않습니다.")) return;
   const r = await post("/api/reset", {}); if (r.error) alert(r.error); refresh();
 };
-$("#keysave").onclick = async e => { e.preventDefault(); const r = await post("/api/apikey",{key:$("#keyin").value}); $("#keyin").value=""; if (r.error) alert(r.error); else $("#keydlg").close(); refresh(); };
+$("#keysave").onclick = async e => { e.preventDefault(); const r = await post("/api/apikey",{provider:$("#provsel").value, key:$("#keyin").value}); $("#keyin").value=""; if (r.error) alert(r.error); else $("#keydlg").close(); refresh(); };
 refresh(); setInterval(refresh, 2000);
 </script>
 </body>

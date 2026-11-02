@@ -177,7 +177,10 @@ def _finalize_case(case, source, last_text):
 
 def _run_turn(user_text, source):
     _messages.append({"role": "user", "content": user_text})
-    case = _open_or_continue_case(source, user_text)
+    # 단순 대화·질의응답은 조사 기록을 남기지 않는다. 관리자 요청은 에이전트가 도구를 실제로
+    # 쓰는 순간('진짜 조사')에만 사건을 지연 생성하고, 감시 경보·승인 결과는 즉시 사건과 연결한다.
+    case = None if source == "admin" else _open_or_continue_case(source, user_text)
+    acc = {"steps": 0, "calls": 0, "input": 0, "output": 0, "model": "", "provider": ""}
     provider = providers.get_provider()
     run_cost, last_call, last_text = 0.0, None, ""
     try:
@@ -185,13 +188,20 @@ def _run_turn(user_text, source):
             resp = provider.generate(SYSTEM_PROMPT, _messages, tools.TOOLS)
             run_cost += _record_usage(resp.usage, provider)
             with state.lock:                        # 관측 가능한 기계적 사실을 자동 수집 (모델이 못 꾸민다)
-                case["model"], case["provider"] = provider.model, provider.name
-                case["steps"] += 1
-                case["tokens"]["calls"] += 1
-                case["tokens"]["input"] += resp.usage.get("input", 0)
-                case["tokens"]["output"] += resp.usage.get("output", 0)
-                case["elapsed_sec"] = int(time.time() - case["ts"])
-                case["updated"] = state.now()
+                if case is not None:
+                    case["model"], case["provider"] = provider.model, provider.name
+                    case["steps"] += 1
+                    case["tokens"]["calls"] += 1
+                    case["tokens"]["input"] += resp.usage.get("input", 0)
+                    case["tokens"]["output"] += resp.usage.get("output", 0)
+                    case["elapsed_sec"] = int(time.time() - case["ts"])
+                    case["updated"] = state.now()
+                else:                               # 아직 사건 미생성: 도구를 쓰면 넘겨줄 수 있게 누적만 해 둔다
+                    acc["steps"] += 1
+                    acc["calls"] += 1
+                    acc["input"] += resp.usage.get("input", 0)
+                    acc["output"] += resp.usage.get("output", 0)
+                    acc["model"], acc["provider"] = provider.model, provider.name
 
             if resp.stop_reason == "error":
                 state.add_chat("system", resp.error or "모델 호출 오류")
@@ -214,6 +224,17 @@ def _run_turn(user_text, source):
             if config.RUN_BUDGET_USD and run_cost > config.RUN_BUDGET_USD:
                 state.add_chat("system", f"이번 작업 비용이 상한(${config.RUN_BUDGET_USD})을 넘어 중단했습니다.")
                 return
+
+            if case is None:                        # 도구를 실제로 쓰는 순간에 조사 건을 연다 (지연 생성)
+                case = _open_or_continue_case(source, user_text)
+                with state.lock:                    # 사건 생성 전까지 누적한 호출·토큰 통계를 넘긴다
+                    case["steps"] += acc["steps"]
+                    case["tokens"]["calls"] += acc["calls"]
+                    case["tokens"]["input"] += acc["input"]
+                    case["tokens"]["output"] += acc["output"]
+                    case["model"], case["provider"] = acc["model"], acc["provider"]
+                    case["elapsed_sec"] = int(time.time() - case["ts"])
+                    case["updated"] = state.now()
 
             results = []
             for block in resp.tool_uses:
@@ -240,7 +261,8 @@ def _run_turn(user_text, source):
         else:
             state.add_chat("system", f"도구 호출이 {config.MAX_AGENT_STEPS}회를 넘어 이번 작업을 멈췄습니다.")
     finally:
-        _finalize_case(case, source, last_text)
+        if case is not None:                        # 도구를 쓰지 않은 단순 대화는 조사 기록을 만들지 않는다
+            _finalize_case(case, source, last_text)
 
 
 def _worker():

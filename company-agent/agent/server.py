@@ -28,6 +28,7 @@ def _decide(approval_id, approve, actor="관리자"):
             return None
         rec["status"] = "running" if approve else "rejected"
         rec["decided_at"] = state.now()
+    state.save_approvals()
     if not approve:
         state.log_audit(actor, "rejected", f"#{rec['id']} {rec['summary']}")
         brain.submit(f"[관리자 거부] 승인 요청 #{rec['id']}({rec['summary']})을 관리자가 거부했습니다. 실행하지 않았습니다.",
@@ -54,6 +55,7 @@ def _decide(approval_id, approve, actor="관리자"):
                 c["status"] = "verifying"
                 c["updated"] = state.now()
         state.save_cases()
+        state.save_approvals()
         state.log_audit("agent", "executed" if status == "done" else "failed", f"#{rec['id']} {result.splitlines()[0]}")
         brain.submit(f"[관리자 승인] 승인 요청 #{rec['id']}({rec['summary']})을 실행했습니다.\n실행 결과:\n{result}\n"
                      "의도대로 적용됐는지 조회로 검증하고 보고하세요.", "approval")

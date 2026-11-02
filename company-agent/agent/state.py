@@ -84,6 +84,42 @@ def load_cases():
         for c in data:
             c.setdefault("ts", time.time())
             cases.append(c)
+    _resume_ids()
+
+
+def save_approvals():
+    """승인 요청은 재시작해도 남아야 한다(대기 중인 요청이 사라지면 관리자가 판단할 기회를 잃는다)."""
+    try:
+        with lock:
+            data = list(approvals[-100:])
+        _write_json("approvals.json", data)
+    except OSError:
+        pass
+
+
+def load_approvals():
+    try:
+        with open(os.path.join(config.DATA_DIR, "approvals.json"), encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return
+    with lock:
+        approvals.clear()
+        for a in data:
+            if a.get("status") == "running":     # 실행 도중 재시작: 결과를 모르므로 성공으로 두지 않는다
+                a["status"] = "failed"
+                a["result"] = ((a.get("result") or "") + "\n에이전트가 실행 도중 재시작되어 결과를 확인하지 못했습니다. "
+                               "장비에 적용됐는지 직접 확인하세요.").strip()
+            approvals.append(a)
+    _resume_ids()
+
+
+def _resume_ids():
+    """번호는 저장된 조사·승인 중 가장 큰 번호 다음부터 이어 간다(재시작 후 번호가 겹치지 않게)."""
+    global _ids
+    with lock:
+        top = max([c.get("id", 0) for c in cases] + [a.get("id", 0) for a in approvals] + [0])
+        _ids = itertools.count(top + 1)
 
 
 def log_audit(actor, action, detail):
@@ -129,6 +165,7 @@ def add_approval(tool, tool_input, summary, reason):
             c["updated"] = now()
     log_audit("agent", "approval_requested", f"#{rec['id']} {summary} (사유: {reason})")
     save_cases()
+    save_approvals()
     return rec
 
 

@@ -75,7 +75,7 @@ def main():
 
     # 6) 상관/구조화 확인: 사건 1건 + 도구 2건(오류 1) + 정합성
     assert conn.execute("SELECT COUNT(*) FROM incidents").fetchone()[0] == 1
-    assert conn.execute("SELECT COUNT(*) FROM tool_calls WHERE incident_id='42'").fetchone()[0] == 2
+    assert conn.execute("SELECT COUNT(*) FROM tool_calls WHERE incident_id='42@2026-10-30T10:00:05+09:00'").fetchone()[0] == 2
     assert conn.execute("SELECT COUNT(*) FROM tool_calls WHERE is_error=1").fetchone()[0] == 1
 
     # 7) 출처 추적(lineage): 모든 정제 행이 raw_id를 가진다

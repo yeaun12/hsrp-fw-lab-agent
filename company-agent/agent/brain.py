@@ -128,6 +128,7 @@ def _load():
     except (OSError, ValueError):
         pass
     state.load_cases()
+    state.load_approvals()
 
 
 def submit(text, source):

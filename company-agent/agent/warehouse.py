@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS ingest_runs(
 CREATE TABLE IF NOT EXISTS ingest_errors(
   id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER, source TEXT, line_no INTEGER,
   reason TEXT, raw TEXT, ingested_at TEXT);
+CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 CREATE INDEX IF NOT EXISTS ix_events_time ON events(occurred_at);
 CREATE INDEX IF NOT EXISTS ix_events_corr ON events(correlation_id);
 CREATE INDEX IF NOT EXISTS ix_tools_incident ON tool_calls(incident_id);
@@ -105,7 +106,40 @@ def connect(db_path):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    _migrate_case_keys(conn)
     return conn
+
+
+CASE_KEY_VERSION = "2"
+
+
+def _case_key(o):
+    """사건 키 = 번호@시작시각. 에이전트 재시작 때 번호가 1부터 다시 매겨져도 서로 다른 사건이 겹치지 않는다."""
+    return f"{o['id']}@{_iso(o.get('started')) or ''}"
+
+
+def _migrate_case_keys(conn):
+    """예전 키(번호만)로 적재된 사건을 새 키로 옮긴다(한 번만, 멱등).
+    번호가 겹쳐 덮어써졌던 사건은 원본 적재본(raw_events: 사건 내용이 바뀔 때마다 한 벌씩 보관)에서 다시 만들고,
+    원본이 보존 정책으로 정리돼 다시 만들 수 없는 사건은 지우지 않고 키만 바꿔 남긴다."""
+    row = conn.execute("SELECT value FROM meta WHERE key='case_key'").fetchone()
+    if row and row["value"] == CASE_KEY_VERSION:
+        return
+    for r in conn.execute("SELECT raw_id, raw_json FROM raw_events WHERE source='cases.json' ORDER BY raw_id").fetchall():
+        try:
+            _h_case(conn, json.loads(r["raw_json"]), r["raw_id"])     # 같은 사건의 여러 판본은 마지막 판본이 남는다
+        except (KeyError, ValueError, TypeError):
+            pass
+    for r in conn.execute("SELECT incident_id, occurred_at FROM incidents WHERE incident_id NOT LIKE '%@%'").fetchall():
+        old, new = r["incident_id"], f"{r['incident_id']}@{r['occurred_at'] or ''}"
+        if conn.execute("SELECT 1 FROM incidents WHERE incident_id=?", (new,)).fetchone():
+            conn.execute("DELETE FROM tool_calls WHERE incident_id=?", (old,))
+            conn.execute("DELETE FROM incidents WHERE incident_id=?", (old,))
+        else:
+            conn.execute("UPDATE tool_calls SET incident_id=? WHERE incident_id=?", (new, old))
+            conn.execute("UPDATE incidents SET incident_id=? WHERE incident_id=?", (new, old))
+    conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES('case_key',?)", (CASE_KEY_VERSION,))
+    conn.commit()
 
 
 def _land(conn, run_id, source, line_no, obj):
@@ -192,9 +226,9 @@ def _h_chat(conn, o, raw_id):
 
 def _h_case(conn, o, raw_id):
     """cases.json 항목 -> incidents + tool_calls (장애 사건 + AI 실행·도구 호출 기록)."""
-    iid = str(o.get("id"))
     if not o.get("id"):
         raise ValueError("case id 누락")
+    iid = _case_key(o)
     tok = o.get("tokens") or {}
     conn.execute("INSERT OR REPLACE INTO incidents(incident_id,occurred_at,ingested_at,source,trigger,model,"
                  "provider,status,resolution,steps,elapsed_sec,tokens_input,tokens_output,basis,proposed_action,"

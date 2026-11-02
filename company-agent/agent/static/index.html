@@ -769,7 +769,7 @@ async function loadInsights(){
     if (r.error){ put("#ins", `<div class="pn"><div class="empty">분석 실패: ${esc(r.error)}</div></div>`); return; }
     const groups = r.groups || [];
     const gHtml = groups.length ? `<table class="t"><tr><th>구간</th><th class="num">이벤트</th><th>관련 대상</th><th>원인 추정</th><th>검증</th></tr>` + groups.map(g => { const s = g.suspected || {};
-      const ver = g.verified_incident ? `<span class="st ok">조사 ${esc(g.verified_incident)}</span><div class="faint" style="font-size:11.5px">${esc((g.verified_basis || "").slice(0, 120))}</div>`
+      const ver = g.verified_incident ? `<span class="st ok">조사 #${esc(String(g.verified_incident).split("@")[0])}</span><div class="faint" style="font-size:11.5px">${esc((g.verified_basis || "").slice(0, 120))}</div>`
         : `<span class="st med">미검증</span>`;
       return `<tr class="s-${g.verified_incident ? "ok" : "med"}"><td class="mono nw">${esc((g.started || "").slice(5, 16))}<br><span class="faint">~ ${esc((g.ended || "").slice(11, 16))}</span></td><td class="num">${g.n}</td>
         <td><span class="tags">${(g.entities || []).slice(0, 8).map(e => `<span class="tag">${esc(e)}</span>`).join("") || "-"}</span></td>

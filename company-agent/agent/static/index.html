@@ -1068,6 +1068,9 @@ buildTopo(); buildMiniTopo();
 try { if (localStorage.getItem("secops.agent") === "0") setAgent(false); } catch (e) {}
 try { if (localStorage.getItem("secops.nav") === "0") setNav(false); } catch (e) {}
 try { const v = localStorage.getItem("secops.view3"); if (v && $("#v-" + v)) showView(v); } catch (e) {}
+// 주소의 #뷰이름으로 특정 화면을 바로 연다(북마크·공유용, 예: #threats). 저장된 마지막 화면보다 우선.
+const fromHash = () => { const h = location.hash.slice(1); if (h && $("#v-" + h)) showView(h); };
+fromHash(); window.addEventListener("hashchange", fromHash);
 refresh(); setInterval(refresh, 2000);
 loadOverview(); setInterval(loadOverview, 60000);   // 추세·처리 단계는 1분마다 다시 계산
 </script>

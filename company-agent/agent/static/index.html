@@ -6,7 +6,7 @@
 <title>랩컴퍼니 보안운영 콘솔</title>
 <style>
 /* 운영 콘솔: [그룹 내비 | 작업 영역 | 에이전트 패널]. 면은 평평하게, 구분은 1px 선, 상태는 색 띠·기호·코드로.
-   랩 관리 PC는 인터넷이 없어 웹폰트 대신 Windows 기본 글꼴(UI: 맑은 고딕/Segoe, 데이터: Cascadia/Consolas)만 쓴다. */
+   관리망 PC는 인터넷이 없을 수 있어 웹폰트 대신 Windows 기본 글꼴(UI: 맑은 고딕/Segoe, 데이터: Cascadia/Consolas)만 쓴다. */
 :root{
   --bg:#eef1f4; --surface:#ffffff; --surface-2:#f5f7f9; --rule:#dde2e8; --rule-2:#c8d0d9;
   --fg:#17202b; --fg-2:#566273; --fg-3:#8a95a2;
@@ -139,6 +139,7 @@ table.t{width:100%;border-collapse:collapse;font-size:12.5px}
 .dq .why{color:var(--fg-2);font-size:12.5px;min-width:0}
 .dq .mt{font-size:11.5px;color:var(--fg-3)}
 .dq .acts{grid-column:2;grid-row:1 / span 3;display:flex;gap:6px;align-items:flex-start}
+.dq[data-case]{cursor:pointer;grid-template-columns:minmax(0,1fr)}.dq[data-case]:hover{background:var(--surface-2)}
 .dq pre{grid-column:1 / -1;white-space:pre-wrap;font:11.5px/1.5 var(--font-data);background:var(--surface-2);border:1px solid var(--rule);padding:6px 8px;margin:4px 0 0;max-height:160px;overflow:auto}
 
 /* 타임라인 */
@@ -167,9 +168,8 @@ ul.cands{margin:0;padding:0;list-style:none;display:grid;gap:3px}
 .topo{width:100%;height:auto;display:block}
 .topo .lk{stroke:var(--rule-2);stroke-width:1.5;fill:none}
 .topo .lk.po{stroke-width:3.5}
-.topo .lk.live{stroke:var(--ok);stroke-dasharray:6 6;animation:flow 1.2s linear infinite}
+.topo .lk.live{stroke:var(--ok)}
 .topo .lk.down{stroke:var(--crit);stroke-dasharray:3 4}
-@keyframes flow{to{stroke-dashoffset:-12}}
 .topo .nd{cursor:default}.topo .nd.mon{cursor:pointer}
 .topo .nd rect{fill:var(--surface);stroke:var(--rule-2);stroke-width:1.2}
 .topo .nd text{fill:var(--fg);font-family:var(--font-data);font-size:11.5px;font-weight:600;text-anchor:middle}
@@ -183,9 +183,9 @@ ul.cands{margin:0;padding:0;list-style:none;display:grid;gap:3px}
 .topo .hs{fill:var(--accent);font-family:var(--font-data);font-size:9.5px;font-weight:700;text-anchor:middle}
 .topo .po-l{fill:var(--fg-3);font-size:9.5px;text-anchor:middle}
 .legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:11px;color:var(--fg-2);padding:8px 12px;border-top:1px solid var(--rule)}
-.legend i{display:inline-block;width:18px;border-top:2px dashed var(--ok);vertical-align:middle;margin-right:6px}
-.legend i.d{border-top-color:var(--crit)}.legend i.n{border-top:2px solid var(--rule-2)}
-@media (prefers-reduced-motion:reduce){.topo .lk.live{animation:none}.led.busy{animation:none}}
+.legend i{display:inline-block;width:18px;border-top:2px solid var(--ok);vertical-align:middle;margin-right:6px}
+.legend i.d{border-top:2px dashed var(--crit)}.legend i.n{border-top-color:var(--rule-2)}
+@media (prefers-reduced-motion:reduce){.led.busy{animation:none}}
 
 /* 분석 막대 */
 .bars{display:grid;gap:4px}
@@ -213,10 +213,7 @@ ul.cands{margin:0;padding:0;list-style:none;display:grid;gap:3px}
 details.tool{font-family:var(--font-data);font-size:11.5px;color:var(--fg-2);padding-left:12px}
 details.tool summary{cursor:pointer}
 details.tool pre{white-space:pre-wrap;background:var(--surface-2);border:1px solid var(--rule);padding:7px 9px;max-height:240px;overflow:auto;color:var(--fg);margin:5px 0 0}
-.sugg{display:flex;flex-wrap:wrap;gap:5px;padding:8px 12px 0;border-top:1px solid var(--rule)}
-.sugg button{border:1px solid var(--rule-2);background:none;border-radius:3px;padding:3px 8px;font-size:11.5px;color:var(--fg-2)}
-.sugg button:hover{color:var(--fg);border-color:var(--fg-3)}
-form#ask{display:flex;gap:6px;padding:8px 12px 12px}
+form#ask{display:flex;gap:6px;padding:10px 12px 12px;border-top:1px solid var(--rule)}
 #q{flex:1;min-width:0;padding:7px 10px;border:1px solid var(--rule-2);border-radius:3px;background:var(--bg)}
 #q:focus{outline:none;border-color:var(--accent)}
 
@@ -245,7 +242,7 @@ dialog input,dialog select{width:100%;padding:7px 9px;margin:6px 0;border:1px so
 </head>
 <body>
 <div class="top">
-  <div class="brand"><b>랩컴퍼니 보안운영</b><span class="env">LAB · HSRP-FW-LAB</span></div>
+  <div class="brand"><b>랩컴퍼니 보안운영</b></div>
   <div class="seg" title="자동 감시가 마지막으로 장비 상태를 수집한 시각"><span class="led" id="monled"></span>감시 <b class="mono" id="monat">-</b></div>
   <div class="seg" title="에이전트 작업 상태"><span class="led" id="busyled"></span><span id="busy">대기</span></div>
   <div class="seg" id="modelseg" title="활성 LLM 제공자와 모델">모델 <b class="mono" id="model">-</b></div>
@@ -281,11 +278,11 @@ dialog input,dialog select{width:100%;padding:7px 9px;margin:6px 0;border:1px so
   <main class="main" id="main">
     <!-- 브리핑 -->
     <section class="view on" id="v-brief">
-      <div class="vh"><div><h1>브리핑</h1><p>에이전트가 감시하고 조사한 결과를, 지금 사람의 판단이 필요한 것부터 보여줍니다.</p></div></div>
+      <div class="vh"><h1>브리핑</h1></div>
       <div class="posture" id="posture"></div>
       <div class="g2">
         <section class="pn"><header><h2>결정 필요</h2><span class="meta" id="dq-meta"></span></header><div id="dq-brief"></div></section>
-        <section class="pn"><header><h2>공격 출발지</h2><span class="meta"><button class="btn sm" data-go="threats">전체 보기</button></span></header><div id="thr-brief"></div></section>
+        <section class="pn"><header><h2>공격 출발지</h2><span class="meta" id="thr-bmeta"></span></header><div id="thr-brief"></div></section>
       </div>
       <div class="g2">
         <section class="pn"><header><h2>에이전트 활동</h2><span class="meta" id="act-meta"></span></header><div class="scroll" id="act-brief"></div></section>
@@ -295,54 +292,52 @@ dialog input,dialog select{width:100%;padding:7px 9px;margin:6px 0;border:1px so
 
     <!-- 결정 대기 -->
     <section class="view" id="v-decide">
-      <div class="vh"><div><h1>결정 대기</h1><p>에이전트는 변경을 직접 실행하지 않습니다. 차단·설정 변경은 여기서 승인해야 적용되고, 실행 전 명령 일치·정책 검증과 백업, 실패 시 롤백을 거칩니다.</p></div></div>
+      <div class="vh"><h1>결정 대기</h1></div>
       <section class="pn"><header><h2>판단이 필요한 항목</h2><span class="meta" id="dq-meta2"></span></header><div id="dq-full"></div></section>
       <section class="pn"><header><h2>처리 이력</h2></header><div class="scroll" id="appr-hist"></div></section>
     </section>
 
     <!-- 조사 기록 -->
     <section class="view" id="v-cases">
-      <div class="vh"><div><h1>조사 기록</h1><p>요청이나 경보 하나마다 에이전트가 무엇을 조회했고, 어떤 원인을 확인하거나 배제했는지, 무엇을 근거로 결론 냈는지 남습니다. 단순 대화는 기록하지 않습니다.</p></div></div>
+      <div class="vh"><h1>조사 기록</h1></div>
       <section class="pn"><header><h2>최근 조사</h2><span class="meta" id="cases-meta"></span></header><div id="cases"></div></section>
     </section>
 
     <!-- 공격 출발지 -->
     <section class="view" id="v-threats">
-      <div class="vh"><div><h1>공격 출발지</h1><p>방화벽 차단 로그와 DMZ 웹 서버 로그를 출발지 IP 하나로 묶었습니다. 행을 누르면 근거가 펼쳐집니다.</p></div>
-        <div class="act"><button class="btn" id="webscan">웹 로그 상세</button><button class="btn pri" data-ask="최근 방화벽 차단 기록과 DMZ 웹 서버 로그를 분석해서 공격 출발지별로 위험도를 판단하고, 차단이 필요한 출발지는 근거와 함께 차단 승인을 요청해 주세요.">에이전트 분석 요청</button></div></div>
+      <div class="vh"><h1>공격 출발지</h1></div>
       <section class="pn"><header><h2>출발지</h2><span class="meta" id="thr-meta"></span></header><div id="thr-full"></div></section>
     </section>
 
     <!-- 차단 목록 -->
     <section class="view" id="v-blocks">
-      <div class="vh"><div><h1>차단 목록</h1><p>pfSense 차단 테이블에 올라 있는 IP와, 그 차단을 누가 언제 무슨 근거로 승인했는지입니다.</p></div></div>
+      <div class="vh"><h1>차단 목록</h1></div>
       <section class="pn"><header><h2>차단 중</h2><span class="meta" id="blk-meta"></span></header><div id="blk"></div></section>
     </section>
 
     <!-- 상관·이상 분석 -->
     <section class="view" id="v-insights">
-      <div class="vh"><div><h1>상관·이상 분석</h1><p>흩어진 경보를 시간 창과 공유 대상으로 묶어 원인을 추정하고, 평소 기준선에서 벗어난 지표를 통계로 찾습니다. 아직 검증되지 않은 묶음은 에이전트에게 설명을 맡길 수 있습니다.</p></div>
-        <div class="act"><button class="btn" id="insbtn">다시 계산</button></div></div>
-      <div id="ins"><div class="empty">분석을 불러오는 중입니다.</div></div>
+      <div class="vh"><h1>상관·이상 분석</h1></div>
+      <div id="ins"><div class="empty">불러오는 중</div></div>
     </section>
 
     <!-- 보안 점검 -->
     <section class="view" id="v-kisa">
-      <div class="vh"><div><h1>보안 점검 (KISA)</h1><p>주요정보통신기반시설 가이드의 네트워크 장비 항목으로 사내 장비를 점검합니다. 규칙 점검은 API 키 없이 동작하고, 에이전트 점검은 수동확인 항목까지 판정해 보고서와 조치 승인 요청을 만듭니다.</p></div>
-        <div class="act"><button class="btn" id="auditrule">규칙 점검 실행</button><button class="btn pri" data-ask="KISA 주요정보통신기반시설 가이드의 네트워크 장비 항목으로 사내 장비 보안 점검을 해 주세요. 수동확인 항목까지 판정해서 보고서를 저장하고, 조치가 필요한 것은 장비별로 묶어 승인 요청해 주세요.">에이전트 점검·보고서</button></div></div>
+      <div class="vh"><h1>보안 점검 (KISA)</h1>
+        <div class="act"><button class="btn" id="auditrule" title="규칙 기반 판정">규칙 점검</button><button class="btn pri" data-ask="KISA 주요정보통신기반시설 가이드의 네트워크 장비 항목으로 사내 장비 보안 점검을 해 주세요. 수동확인 항목까지 판정해서 보고서를 저장하고, 조치가 필요한 것은 장비별로 묶어 승인 요청해 주세요." title="수동확인 항목 판정·보고서·조치 승인 요청까지">정밀 점검</button></div></div>
       <section class="pn"><header><h2>점검 이력</h2><span class="meta" id="kisa-meta"></span></header><div id="audits"></div></section>
     </section>
 
     <!-- 네트워크·장비 -->
     <section class="view" id="v-infra">
-      <div class="vh"><div><h1>네트워크·장비</h1><p>실제 랩 연결 기준 구성도입니다. 감시 중인 장비를 누르면 그 장비의 경보와 조사만 아래에 모아 보여줍니다.</p></div></div>
+      <div class="vh"><h1>네트워크·장비</h1></div>
       <section class="pn"><header><h2>구성도</h2><span class="meta" id="topo-meta"></span></header>
         <svg class="topo" id="topo" viewBox="0 0 780 410" role="img" aria-label="사내 네트워크 구성도와 장비 상태" style="max-height:440px"></svg>
-        <div class="legend"><span><i></i>양쪽 장비 모두 관리 응답 중 (트래픽 양 아님)</span><span><i class="d"></i>응답 없는 장비 구간</span><span><i class="n"></i>감시 대상 아님</span></div>
+        <div class="legend"><span><i></i>정상</span><span><i class="d"></i>무응답</span><span><i class="n"></i>미감시</span></div>
       </section>
       <div class="g2 even">
         <section class="pn"><header><h2>감시 장비</h2></header><div id="devs"></div></section>
-        <section class="pn" id="devpanel"><header><h2 id="dev-title">장비를 선택하세요</h2><span class="meta" id="dev-act"></span></header><div id="dev-ev"><div class="empty">구성도나 장비 표에서 장비를 누르면 관련 경보와 조사가 여기에 모입니다.</div></div></section>
+        <section class="pn" id="devpanel"><header><h2 id="dev-title">장비를 선택하세요</h2><span class="meta" id="dev-act"></span></header><div id="dev-ev"><div class="empty">구성도나 표에서 장비 선택</div></div></section>
       </div>
       <div class="g2 even">
         <section class="pn"><header><h2>HSRP 게이트웨이 이중화</h2></header><div id="hsrp"></div></section>
@@ -352,39 +347,33 @@ dialog input,dialog select{width:100%;padding:7px 9px;margin:6px 0;border:1px so
 
     <!-- 운영 분석 -->
     <section class="view" id="v-analytics">
-      <div class="vh"><div><h1>운영 분석</h1><p>저장된 운영 로그를 데이터 웨어하우스(SQLite)에 적재해 계산합니다. 숫자는 이 랩에서 쌓인 실제 기록입니다.</p></div>
-        <div class="act"><button class="btn" id="anbtn">다시 계산</button></div></div>
-      <div id="analytics"><div class="empty">분석을 불러오는 중입니다.</div></div>
+      <div class="vh"><h1>운영 분석</h1></div>
+      <div id="analytics"><div class="empty">불러오는 중</div></div>
     </section>
 
     <!-- 경보 이력 -->
     <section class="view" id="v-alerts">
-      <div class="vh"><div><h1>경보 이력</h1><p>자동 감시가 올린 경보입니다. 같은 경보는 10분 안에 다시 올리지 않습니다.</p></div></div>
+      <div class="vh"><h1>경보 이력</h1></div>
       <section class="pn"><header><h2>최근 경보</h2><span class="meta" id="al-meta"></span></header><div id="alerts"></div></section>
     </section>
 
     <!-- 감사 로그 -->
     <section class="view" id="v-log">
-      <div class="vh"><div><h1>감사 로그</h1><p>사람·에이전트·감시 기능이 한 모든 행동의 기록입니다.</p></div></div>
+      <div class="vh"><h1>감사 로그</h1></div>
       <section class="pn"><header><h2>최근 60건</h2></header><div id="audit"></div></section>
     </section>
   </main>
 
   <aside class="agentpane" aria-label="에이전트">
-    <header><h2>에이전트</h2><span class="meta"><button class="btn sm" id="resetbtn">새 대화</button><button class="btn sm" id="agentclose" title="패널 닫기">닫기</button></span></header>
+    <header><h2>에이전트</h2><span class="meta"><button class="btn sm" id="resetbtn">새 대화</button></span></header>
     <div id="chat"></div>
-    <div class="sugg">
-      <button data-ask="영업팀(VLAN20) PC가 DB 서버에 접속이 안 된대요. 원인을 확인해 주세요.">DB 접속 불가 문의</button>
-      <button data-ask="지금 네트워크 전체 상태를 점검해서 요약해 주세요.">전체 상태 점검</button>
-      <button data-ask="최근 10분 동안 방화벽이 차단한 외부 트래픽 중 의심스러운 것이 있나요?">차단 트래픽 분석</button>
-    </div>
-    <form id="ask"><input id="q" placeholder="에이전트에게 지시 또는 질문" autocomplete="off"><button class="btn pri">보내기</button></form>
+    <form id="ask"><input id="q" placeholder="지시 또는 질문 입력" autocomplete="off"><button class="btn pri">보내기</button></form>
   </aside>
 </div>
 
 <dialog id="webdlg" style="max-width:900px">
   <header><b>웹 공격 로그 분석</b><span style="flex:1"></span><button class="btn sm" data-close="webdlg">닫기</button></header>
-  <div class="db"><div class="faint" style="margin-bottom:10px">DMZ 웹 서버 접속 로그에서 SQL 인젝션·XSS 시그니처가 탐지된 외부 출발지입니다. 성공 추정은 앱 응답으로 판단한 가능성입니다.</div><div id="webbody"></div></div>
+  <div class="db"><div id="webbody"></div></div>
 </dialog>
 <dialog id="auditdlg" style="max-width:1180px;width:95vw">
   <header><b id="audittitle">점검 결과</b><span style="flex:1"></span><button class="btn sm" data-close="auditdlg">닫기</button></header>
@@ -394,7 +383,7 @@ dialog input,dialog select{width:100%;padding:7px 9px;margin:6px 0;border:1px so
 <dialog id="keydlg"><form method="dialog" id="keyform">
   <header><b>LLM 모델 설정</b></header>
   <div class="db">
-    <div class="faint">Mock은 키 없이 제어 흐름을 시험합니다. Gemini는 무료 티어, Claude는 유료입니다. 키는 에이전트 PC에만 저장되고 다시 표시되지 않습니다.</div>
+    <div class="faint">키는 에이전트 서버에만 저장되고 다시 표시되지 않습니다.</div>
     <select id="provsel"></select>
     <input type="password" id="keyin" placeholder="API 키" autocomplete="off">
     <div class="faint" id="keyhint"></div>
@@ -462,7 +451,6 @@ function threatRows(){
 const thrType = r => [r.scan && (r.scanSusp ? "포트 스캔" : "차단된 접근"), r.web && "웹 공격 " + r.web.categories.join("·")].filter(Boolean).join(" + ");
 const thrEvid = r => [r.scan && `포트 ${r.scan.distinct_targets} · 패킷 ${r.scan.blocked_packets}`, r.web && `웹 시도 ${r.web.attempts}`].filter(Boolean).join(" / ");
 const thrState = r => r.blocked ? `<span class="st ok">차단됨</span>` : r.internal ? `<span class="st info">내부</span>` : `<span class="st high">미차단</span>`;
-const askThr = r => `${r.src} 출발지를 조사해 주세요. 관측: ${thrType(r)} (${thrEvid(r)}). 방화벽 차단 기록과 웹 로그를 확인해 위험도를 판단하고, 필요하면 근거와 함께 차단 승인을 요청해 주세요.`;
 
 // ---- 위협 수준: 지금 상태로 판정하고 근거를 함께 보여준다
 function threatLevel(rows){
@@ -489,18 +477,18 @@ function decisionItems(){
   return [...ap, ...cs];
 }
 function dqHtml(items, full){
-  if (!items.length) return `<div class="empty">지금 판단할 항목이 없습니다. 에이전트가 변경을 제안하거나 결론을 확정하지 못하면 여기에 올라옵니다.</div>`;
+  if (!items.length) return `<div class="empty">대기 항목 없음</div>`;
   return items.map(it => {
     if (it.k === "ap"){ const a = it.a;
       return `<div class="dq ap"><div class="ti">#${a.id} ${esc(a.summary)}</div>
         <div class="acts"><button class="btn sm pri" data-appr="${a.id}" data-ok="1">승인</button><button class="btn sm danger" data-appr="${a.id}" data-ok="0">거부</button></div>
         <div class="why">${esc(a.reason)}</div>
-        <div class="mt mono">변경 승인 요청 · ${esc(hms(a.time))}${a.case_id ? ` · <a href="#" data-case="${a.case_id}">조사 #${a.case_id}</a>` : ""}</div>
+        <div class="mt mono">승인 요청 · ${esc(hms(a.time))}${a.case_id ? ` · <a href="#" data-case="${a.case_id}">조사 #${a.case_id}</a>` : ""}</div>
         ${full && a.input ? `<pre>${esc(JSON.stringify(a.input, null, 1))}</pre>` : ""}</div>`; }
-    const c = it.c, why = it.k === "ur" ? "에이전트가 원인을 확인하지 못했습니다." : "도구로 조사했지만 해결을 확정하지 않았습니다. 결과를 확인해 주세요.";
-    return `<div class="dq ${it.k}"><div class="ti" title="${esc(trig(c))}">#${c.id} ${esc(trig(c))}</div>
-      <div class="acts"><button class="btn sm" data-case="${c.id}">근거 보기</button><button class="btn sm" data-ask="${esc(`조사 #${c.id}(${trig(c).slice(0, 80)})를 이어서 확인해 주세요. 남은 원인 후보를 검증하고 결론을 명확히 해 주세요.`)}">재조사 요청</button></div>
-      <div class="why">${why}</div><div class="mt mono">${caseSt(c.status)} · ${esc(hms(c.started))} · 도구 ${(c.tools||[]).length}회${it.dup > 1 ? ` · 같은 증상 조사 ${it.dup}건` : ""}</div></div>`;
+    // 에이전트가 남긴 판단 근거 첫 줄을 그대로 보여준다(없으면 상태만)
+    const c = it.c, why = (c.basis || "").replace(/[#*`]/g, "").split("\n").map(s => s.trim()).filter(Boolean)[0] || "결론 미확정";
+    return `<div class="dq ${it.k}" data-case="${c.id}"><div class="ti" title="${esc(trig(c))}">#${c.id} ${esc(trig(c))}</div>
+      <div class="why tx" style="max-width:none" title="${esc(why)}">${esc(why)}</div><div class="mt mono">${caseSt(c.status)} · ${esc(hms(c.started))} · 도구 ${(c.tools||[]).length}회${it.dup > 1 ? ` · 동일 증상 ${it.dup}건` : ""}</div></div>`;
   }).join("");
 }
 
@@ -515,26 +503,27 @@ function renderBrief(){
   put("#posture", [
     cell("threats", "위협 수준", tl, tc, tw, true),
     cell("decide", "결정 대기", items.length, items.length ? "high" : "ok", items.length ? "승인·확인 요청" : "없음"),
-    cell("cases", "미해결 조사", open, open ? "med" : "ok", "최근 12건 기준"),
+    cell("cases", "미해결 조사", open, open ? "med" : "ok", "진행 중 포함"),
     cell("threats", "공격 출발지", live, live ? "crit" : "ok", "미차단 · 외부"),
     cell("infra", "장비 응답", `${up}/${MON.length}`, up === MON.length ? "ok" : "crit", down.length ? "응답 없음: " + down.join(", ") : "모두 응답"),
     cell("infra", "HSRP", groups.length ? (hsBad ? "이상" : "정상") : "-", !groups.length ? "" : hsBad ? "crit" : "ok", groups.length ? `그룹 ${groups.length}개` : "수집 전", true),
-    cell("blocks", "차단 IP", (s.blocked_ips || []).length, "", "pfSense 차단 테이블")].join(""));
+    cell("blocks", "차단 IP", (s.blocked_ips || []).length, "", "방화벽 차단 목록")].join(""));
   put("#dq-meta", items.length ? `${items.length}건` : "");
   put("#dq-brief", dqHtml(items.slice(0, 5), false));
   put("#thr-brief", rows.length ? `<table class="t"><tr><th>출발지</th><th>유형</th><th>근거</th><th>상태</th></tr>` +
     rows.slice(0, 5).map(r => `<tr class="click s-${r.sev}" data-go="threats"><td class="mono nw">${esc(r.src)}</td><td>${esc(thrType(r))}</td><td class="mono nw">${esc(thrEvid(r))}</td><td>${thrState(r)}</td></tr>`).join("") + `</table>`
-    : `<div class="empty">최근 ${Math.round((S.scan_window_sec || 120) / 60)}분 방화벽 차단 기록과 웹 로그에 공격 출발지가 없습니다.</div>`);
+    : `<div class="empty">${s.devices && s.devices.FW && !s.devices.FW.up ? "방화벽 무응답, 수집 불가" : "탐지된 출발지 없음"}</div>`);
+  put("#thr-bmeta", `최근 ${Math.round((S.scan_window_sec || 120) / 60)}분`);
   const cs = S.cases || [], tools = cs.reduce((n, c) => n + (c.tools || []).length, 0);
   const done = cs.filter(c => c.elapsed_sec), avg = done.length ? Math.round(done.reduce((n, c) => n + c.elapsed_sec, 0) / done.length) : 0;
   put("#act-meta", cs.length ? `<span class="mono">${cs.length}건 · 평균 ${avg}s · 도구 ${tools}회</span>` : "");
   put("#act-brief", cs.length ? `<table class="t"><tr><th>#</th><th>접수</th><th>판단</th><th class="num">소요</th><th class="num">도구</th></tr>` +
     cs.map(c => `<tr class="click" data-case="${c.id}"><td class="mono">${c.id}</td><td><div class="tx">${esc(trig(c))}</div><div class="faint" style="font-size:11px">${SRC[c.source] || esc(c.source)}${(c.devices||[]).length ? " · " + esc(c.devices.join(", ")) : ""}</div></td><td>${caseSt(c.status)}</td><td class="num">${c.elapsed_sec || 0}s</td><td class="num">${(c.tools||[]).length}</td></tr>`).join("") + `</table>`
-    : `<div class="empty">아직 조사가 없습니다. 감시 경보가 오거나 에이전트에게 장애를 맡기면 조사 과정이 쌓입니다.</div>`);
+    : `<div class="empty">조사 내역 없음</div>`);
   const ev = [...(S.alerts || []).map(a => ({t:a.time, h:sevTag(a.severity), x:a.title, go:"alerts"})),
     ...cs.map(c => ({t:c.started, h:caseSt(c.status), x:`조사 #${c.id} ${trig(c)}`, cid:c.id}))].filter(e => e.t).sort((a, b) => a.t < b.t ? 1 : -1).slice(0, 12);
   put("#tl-brief", ev.map(e => `<div class="tl" ${e.cid ? `data-case="${e.cid}"` : `data-go="${e.go}"`}><span class="tt">${esc(e.t.slice(5, 16))}</span>${e.h}<span class="tx" title="${esc(e.x)}">${esc(e.x)}</span></div>`).join("")
-    || `<div class="empty">아직 이벤트가 없습니다.</div>`);
+    || `<div class="empty">이벤트 없음</div>`);
 }
 
 function renderDecide(){
@@ -546,7 +535,7 @@ function renderDecide(){
   put("#appr-hist", hist.length ? `<table class="t"><tr><th>#</th><th>요청</th><th>결과</th><th>변경관리</th><th>처리</th></tr>` + hist.map(a => { const [l, c] = st[a.status] || [a.status, "info"];
     const ch = a.change ? `명령·정책 검증 ${a.change.cmd_verified ? "통과" : "실패"}${a.change.backup_lines ? ` · 백업 ${a.change.backup_lines}줄` : ""}${a.change.rolled_back ? " · 롤백" : ""}` : "-";
     return `<tr><td class="mono">${a.id}</td><td><div class="tx">${esc(a.summary)}</div><div class="faint" style="font-size:11px">${esc(a.reason)}</div></td><td><span class="st ${c}">${l}</span></td><td style="font-size:12px">${esc(ch)}</td><td class="mono nw">${esc(hms(a.decided_at || a.time))}</td></tr>`; }).join("") + `</table>`
-    : `<div class="empty">처리한 승인이 없습니다.</div>`);
+    : `<div class="empty">처리 이력 없음</div>`);
 }
 
 let caseOpen = {};
@@ -573,7 +562,7 @@ function renderCases(){
         ${c.reverification ? `<div><div class="faint" style="font-size:11.5px;margin-bottom:3px">재검증</div><div class="box">${esc(c.reverification)}</div></div>` : ""}
         ${tools.length ? `<details class="tool"><summary>도구 실행 ${tools.length}건</summary><pre>${tools.map(t => `${esc(hms(t.time))} ${esc(t.name)}${t.device ? " [" + esc(t.device) + "]" : ""}${t.error ? " (오류)" : ""}\n  → ${esc(t.summary)}`).join("\n")}</pre></details>` : ""}
       </div></details>`;
-  }).join("") || `<div class="empty">아직 조사 기록이 없습니다.</div>`);
+  }).join("") || `<div class="empty">조사 기록 없음</div>`);
 }
 function openCase(id){ caseOpen[id] = true; S && renderCases(); showView("cases"); const el = $("#case-" + id); if (el){ el.open = true; el.scrollIntoView({block:"start"}); } }
 
@@ -581,31 +570,29 @@ let thrOpen = new Set();
 function renderThreats(){
   const rows = threatRows();
   put("#thr-meta", `방화벽 차단 로그 최근 ${Math.round((S.scan_window_sec || 120) / 60)}분 · 스캔 기준 포트 ${S.scan_min_ports || 8}개 이상`);
-  put("#thr-full", rows.length ? `<table class="t"><tr><th>출발지</th><th>유형</th><th>ATT&amp;CK</th><th>근거</th><th>성공 흔적</th><th>상태</th><th></th></tr>` + rows.map(r => {
-    const det = thrOpen.has(r.src) ? `<tr class="detail"><td colspan="7"><dl class="kv">
+  put("#thr-full", rows.length ? `<table class="t"><tr><th>출발지</th><th>유형</th><th>ATT&amp;CK</th><th>근거</th><th>성공 흔적</th><th>상태</th></tr>` + rows.map(r => {
+    const det = thrOpen.has(r.src) ? `<tr class="detail"><td colspan="6"><dl class="kv">
       ${r.scan ? `<dt>차단 대상 포트</dt><dd class="mono">${esc(r.scan.targets.join(", "))}</dd><dt>목적지 IP</dt><dd class="mono">${esc(r.scan.dst_ips.join(", "))}</dd><dt>관측 구간</dt><dd class="mono">${r.scan.seconds_span}s · 인터페이스 ${esc((r.scan.interfaces||[]).join(", "))}</dd>` : ""}
-      ${r.web ? `<dt>웹 공격</dt><dd>${esc(r.web.categories.join(", "))} 시도 ${r.web.attempts}건${r.web.success ? " · 응답상 성공 가능성 있음" : ""} <button class="btn sm" data-web="1">로그 보기</button></dd>` : ""}
+      ${r.web ? `<dt>웹 공격</dt><dd>${esc(r.web.categories.join(", "))} 시도 ${r.web.attempts}건${r.web.success ? " · 응답상 성공 가능성 있음" : ""} · <a href="#" data-web="1">요청 원문</a></dd>` : ""}
       </dl></td></tr>` : "";
     return `<tr class="click s-${r.sev}" data-thr="${esc(r.src)}"><td class="mono nw">${esc(r.src)}</td><td>${esc(thrType(r))}</td><td><span class="tags">${r.tech.map(t => `<span class="tag" title="${t === "T1046" ? "Network Service Discovery" : "Exploit Public-Facing Application"}">${t}</span>`).join("") || "-"}</span></td>
-      <td class="mono nw">${esc(thrEvid(r))}</td><td>${r.web && r.web.success ? `<span class="sv crit">성공 추정</span>` : "-"}</td><td>${thrState(r)}</td>
-      <td>${r.blocked || r.internal ? "" : `<button class="btn sm" data-ask="${esc(askThr(r))}">조사 요청</button>`}</td></tr>` + det; }).join("") + `</table>`
-    : `<div class="empty">최근 방화벽 차단 기록과 웹 로그에 공격 출발지가 없습니다. 외부에서 스캔이나 웹 공격이 들어오면 출발지별로 묶여 표시됩니다.</div>`);
+      <td class="mono nw">${esc(thrEvid(r))}</td><td>${r.web && r.web.success ? `<span class="sv crit">성공 추정</span>` : "-"}</td><td>${thrState(r)}</td></tr>` + det; }).join("") + `</table>`
+    : `<div class="empty">${((S.status || {}).devices || {}).FW && !S.status.devices.FW.up ? "방화벽 무응답, 차단 로그 수집 불가" : "탐지된 출발지 없음"}</div>`);
   setn("#n-threats", rows.filter(r => !r.blocked && !r.internal && r.sev !== "med").length, true);
 }
 
 function renderBlocks(){
   const ips = (S.status || {}).blocked_ips || [];
   put("#blk-meta", `${ips.length}개`);
-  put("#blk", ips.length ? `<table class="t"><tr><th>IP</th><th>차단 근거</th><th>승인</th><th>조사</th><th>처리 시각</th><th></th></tr>` + ips.map(ip => {
+  put("#blk", ips.length ? `<table class="t"><tr><th>IP</th><th>차단 근거</th><th>승인</th><th>조사</th><th>처리 시각</th></tr>` + ips.map(ip => {
     const a = (S.approvals || []).find(x => x.tool === "request_firewall_block" && x.input && x.input.ip === ip);
-    return `<tr><td class="mono nw">${esc(ip)}</td><td>${a ? esc(a.reason) : `<span class="faint">최근 승인 기록 밖 (감사 로그 참고)</span>`}</td><td class="mono">${a ? "#" + a.id : "-"}</td>
-      <td>${a && a.case_id ? `<a href="#" data-case="${a.case_id}" class="mono">#${a.case_id}</a>` : "-"}</td><td class="mono nw">${a ? esc((a.decided_at || a.time || "").slice(5, 16)) : "-"}</td>
-      <td><button class="btn sm" data-ask="${esc(`${ip} 차단을 계속 유지해야 하는지 검토해 주세요. 최근 차단 로그와 웹 로그에서 이 출발지 활동을 확인하고, 해제가 맞다면 근거와 함께 차단 해제 승인을 요청해 주세요.`)}">해제 검토 요청</button></td></tr>`; }).join("") + `</table>`
-    : `<div class="empty">차단 중인 IP가 없습니다. 에이전트가 차단을 제안하고 승인되면 여기에 올라옵니다.</div>`);
+    return `<tr><td class="mono nw">${esc(ip)}</td><td>${a ? esc(a.reason) : `<span class="faint">이전 기록 (감사 로그)</span>`}</td><td class="mono">${a ? "#" + a.id : "-"}</td>
+      <td>${a && a.case_id ? `<a href="#" data-case="${a.case_id}" class="mono">#${a.case_id}</a>` : "-"}</td><td class="mono nw">${a ? esc((a.decided_at || a.time || "").slice(5, 16)) : "-"}</td></tr>`; }).join("") + `</table>`
+    : `<div class="empty">차단 중인 IP 없음</div>`);
   setn("#n-blocks", ips.length);
 }
 
-// ---- 인프라: 실제 GNS3 프로젝트 링크 기준 구성도
+// ---- 인프라: 사내 네트워크 연결 구성도
 const TOPO_N = {ISP1:[250,40,"ISP 1"], ISP2:[530,40,"ISP 2"], FW:[390,115,"pfSense 방화벽"], WEB:[640,115,"DMZ 웹 서버"],
   SW1:[390,190,"업링크 스위치"], CORE1:[250,270,"L3 코어"], CORE2:[530,270,"L3 코어"], BRANCH:[700,270,"지사 · OSPF"],
   ASW1:[250,370,"액세스"], ASW2:[530,370,"액세스"], SRV:[700,370,"DB 서버"]};
@@ -618,7 +605,7 @@ function buildTopo(){
   const N = Object.entries(TOPO_N).map(([n, [x, y, r]]) => `<g class="nd na" id="nd-${n}" ${MON.includes(n) ? `data-dev="${n}"` : ""} transform="translate(${x} ${y})">` +
     `<title id="tt-${n}">${n}</title><rect x="-54" y="-21" width="108" height="42" rx="3"/><rect class="sd" x="-45" y="-10" width="6" height="6" rx="0"/>` +
     `<text y="-2">${n}</text><text class="r" y="12">${r}</text><text class="hs" id="hs-${n}" y="36"></text></g>`).join("");
-  $("#topo").innerHTML = L + `<text class="po-l" x="390" y="262">HSRP 페어 · 2링크</text>` + N;
+  $("#topo").innerHTML = L + `<text class="po-l" x="390" y="262">HSRP</text>` + N;
 }
 let selDev = null;
 function renderInfra(){
@@ -627,7 +614,7 @@ function renderInfra(){
   for (const n in TOPO_N){
     $("#nd-" + n).setAttribute("class", "nd " + st(n) + (MON.includes(n) ? " mon" : "") + (n === selDev ? " sel" : ""));
     const x = dev[n];
-    $("#tt-" + n).textContent = !MON.includes(n) ? `${n}: 에이전트 감시 대상 아님` : !x ? `${n}: 확인 전` : `${n}: ${x.up ? "관리 응답 정상" : "응답 없음 - " + (x.error || "")}`;
+    $("#tt-" + n).textContent = !MON.includes(n) ? `${n}: 미감시` : !x ? `${n}: 확인 전` : `${n}: ${x.up ? "정상" : "무응답 - " + (x.error || "")}`;
   }
   TOPO_L.forEach(([a, b, k], i) => { const sa = st(a), sb = st(b);
     const cls = "lk" + (k === "po" ? " po" : "") + (sa === "bad" || sb === "bad" ? " down" : sa === "ok" && sb === "ok" ? " live" : "");
@@ -645,25 +632,24 @@ function renderInfra(){
   put("#hsrp", groups.length ? `<table class="t"><tr><th>그룹</th><th>인터페이스</th><th>VIP</th><th>Active</th><th>CORE1</th><th>CORE2</th></tr>` + groups.sort((a, b) => +a[0] - +b[0]).map(([g, v]) => {
     const bad = v.active === "없음" || v.active === "둘 다", m = c => v.members[c] ? `${esc(v.members[c].state)} <span class="faint">${v.members[c].priority}</span>` : "-";
     return `<tr class="${bad ? "s-crit" : ""}"><td class="mono">${esc(g)}</td><td class="mono">${esc(v.interface)}</td><td class="mono">${esc(v.vip)}</td><td><span class="st ${bad ? "crit" : "ok"}">${esc(v.active)}</span></td><td class="mono">${m("CORE1")}</td><td class="mono">${m("CORE2")}</td></tr>`; }).join("") + `</table>`
-    : `<div class="empty">HSRP 상태를 수집하는 중입니다.</div>`);
+    : `<div class="empty">수집 중</div>`);
   const gw = Object.entries(s.gateways || {});
   put("#gws", gw.length ? `<table class="t"><tr><th>게이트웨이</th><th>모니터</th><th class="num">손실</th><th>상태</th></tr>` + gw.map(([n, g]) =>
     `<tr><td class="mono">${esc(n)}</td><td class="mono">${esc(g.monitor)}</td><td class="num">${esc(g.loss)}</td><td><span class="st ${g.status === "online" ? "ok" : "crit"}">${esc(g.status)}</span></td></tr>`).join("") + `</table>`
-    : `<div class="empty">${dev.FW && !dev.FW.up ? "방화벽에 접속하지 못해 게이트웨이 상태를 가져오지 못했습니다." : "게이트웨이 상태를 수집하는 중입니다."}</div>`);
+    : `<div class="empty">${dev.FW && !dev.FW.up ? "방화벽 무응답, 수집 불가" : "수집 중"}</div>`);
   renderDevEvents();
 }
 function renderDevEvents(){
   if (!selDev) return;
   const i = (S.inventory || {})[selDev] || {}, x = ((S.status || {}).devices || {})[selDev];
   put("#dev-title", `${selDev} <span class="faint mono" style="font-weight:400">${esc(i.host || "")}</span>`);
-  put("#dev-act", `<button class="btn sm pri" data-ask="${esc(`${selDev}(${i.host || ""}, ${i.role || ""}) 장비를 점검해 주세요. 관리 접속 상태와 최근 경보를 확인하고, 이상이 있으면 원인을 조사해 주세요.`)}">이 장비 점검 요청</button>`);
   const al = (S.alerts || []).filter(a => (a.title + " " + a.detail).includes(selDev)).map(a => ({t:a.time, h:sevTag(a.severity), x:a.title, go:"alerts"}));
   const cs = (S.cases || []).filter(c => (c.devices || []).includes(selDev) || trig(c).includes(selDev)).map(c => ({t:c.started, h:caseSt(c.status), x:`조사 #${c.id} ${trig(c)}`, cid:c.id}));
   const ev = [...al, ...cs].sort((a, b) => a.t < b.t ? 1 : -1);
   put("#dev-ev", `<div class="pb dim" style="font-size:12px;border-bottom:1px solid var(--rule)">${esc(i.role || "")}</div>` +
     (x && !x.up ? `<div class="pb" style="border-bottom:1px solid var(--rule)"><span class="st crit">무응답</span> <span class="mono" style="font-size:12px">${esc(x.error || "")}</span></div>` : "") +
     (ev.map(e => `<div class="tl" ${e.cid ? `data-case="${e.cid}"` : `data-go="${e.go}"`}><span class="tt">${esc(e.t.slice(5, 16))}</span>${e.h}<span class="tx" title="${esc(e.x)}">${esc(e.x)}</span></div>`).join("")
-    || `<div class="empty">${selDev} 관련 경보나 조사가 없습니다.</div>`));
+    || `<div class="empty">관련 경보·조사 없음</div>`));
 }
 function selectDevice(n){ selDev = n; if (S) renderInfra(); showView("infra"); $("#devpanel").scrollIntoView({block:"nearest"}); }
 
@@ -672,48 +658,44 @@ function renderAlerts(){
   put("#al-meta", `${al.length}건`);
   setn("#n-alerts", al.filter(a => a.severity === "high").length, true);
   put("#alerts", al.length ? `<table class="t"><tr><th>등급</th><th>시각</th><th>내용</th></tr>` + al.map(a => `<tr class="s-${(SEV[a.severity] || [, "info"])[1]}"><td>${sevTag(a.severity)}</td><td class="mono nw">${esc(a.time.slice(5, 19))}</td><td><b style="font-weight:600">${esc(a.title)}</b><div class="dim" style="font-size:12px">${esc(a.detail)}</div></td></tr>`).join("") + `</table>`
-    : `<div class="empty">경보가 없습니다.</div>`);
+    : `<div class="empty">경보 없음</div>`);
 }
 function renderLog(){
   put("#audit", (S.audit || []).length ? `<table class="t"><tr><th>시각</th><th>주체</th><th>행동</th><th>내용</th></tr>` + S.audit.map(a => `<tr><td class="mono nw">${esc(hms(a.time))}</td><td class="mono">${esc(a.actor)}</td><td class="mono">${esc(a.action)}</td><td style="font-size:12px">${esc(a.detail)}</td></tr>`).join("") + `</table>`
-    : `<div class="empty">기록이 없습니다.</div>`);
+    : `<div class="empty">기록 없음</div>`);
 }
 function renderKisa(){
   const list = S.audits || [], running = S.audit_running;
   $("#auditrule").disabled = running;
-  put("#kisa-meta", running ? "규칙 점검 진행 중 (장비 5대, 약 1분)" : "");
+  put("#kisa-meta", running ? "점검 진행 중" : "");
   put("#audits", list.length ? `<table class="t"><tr><th>시각</th><th>실행</th><th class="num">대상</th><th class="num">취약 (상)</th><th class="num">수동확인</th><th class="num">양호</th><th></th></tr>` + list.map(a => { const s = a.summary;
     return `<tr class="${s["취약_상"] ? "s-crit" : s["취약"] ? "s-high" : "s-ok"}"><td class="mono nw">${esc(a.time)}</td><td>${a.actor === "agent" ? "에이전트" : esc(a.actor)}${a.has_report ? ` <span class="tag">보고서</span>` : ""}</td><td class="num">${a.devices.length}</td>
       <td class="num" style="color:var(--crit)">${s["취약"]} (${s["취약_상"]})</td><td class="num">${s["수동확인"]}</td><td class="num">${s["양호"]}</td><td><button class="btn sm" data-audit="${esc(a.id)}">결과 보기</button></td></tr>`; }).join("") + `</table>`
-    : `<div class="empty">${running ? "점검 중입니다." : "아직 점검 기록이 없습니다. 규칙 점검은 API 키 없이 실행됩니다."}</div>`);
+    : `<div class="empty">${running ? "점검 진행 중" : "점검 기록 없음"}</div>`);
 }
 
 // ---- 상관·이상 분석 (/api/insights)
-let insLoaded = false;
+let insLoaded = 0;
 async function loadInsights(){
-  $("#insbtn").disabled = true; insLoaded = true;
+  insLoaded = Date.now();
   try {
     const r = await (await fetch("/api/insights")).json();
     if (r.error){ put("#ins", `<div class="pn"><div class="empty">분석 실패: ${esc(r.error)}</div></div>`); return; }
-    const rd = r.readiness || {}, p = r.profile || {};
     const groups = r.groups || [];
     const gHtml = groups.length ? `<table class="t"><tr><th>구간</th><th class="num">이벤트</th><th>관련 대상</th><th>원인 추정</th><th>검증</th></tr>` + groups.map(g => { const s = g.suspected || {};
       const ver = g.verified_incident ? `<span class="st ok">조사 ${esc(g.verified_incident)}</span><div class="faint" style="font-size:11.5px">${esc((g.verified_basis || "").slice(0, 120))}</div>`
-        : `<button class="btn sm" data-ask="${esc(`다음 경보 묶음의 원인을 조사해 설명해 주세요. 구간 ${g.started}~${g.ended}, 이벤트 ${g.n}건, 관련 대상 ${(g.entities || []).join(", ")}. 원인 추정 이벤트: [${s.severity}] ${s.event_type} - ${(s.detail || "").slice(0, 160)}`)}">에이전트에게 설명 요청</button>`;
+        : `<span class="st med">미검증</span>`;
       return `<tr class="s-${g.verified_incident ? "ok" : "med"}"><td class="mono nw">${esc((g.started || "").slice(5, 16))}<br><span class="faint">~ ${esc((g.ended || "").slice(11, 16))}</span></td><td class="num">${g.n}</td>
         <td><span class="tags">${(g.entities || []).slice(0, 8).map(e => `<span class="tag">${esc(e)}</span>`).join("") || "-"}</span></td>
         <td>${sevTag(s.severity)} <span class="mono" style="font-size:12px">${esc(s.event_type)}</span><div class="dim" style="font-size:12px">${esc((s.detail || "").slice(0, 140))}</div></td><td>${ver}</td></tr>`; }).join("") + `</table>`
-      : `<div class="empty">${r.window_sec}초 안에 두 건 이상 몰린 이벤트 묶음이 없습니다.</div>`;
+      : `<div class="empty">상관 묶음 없음</div>`;
     const aHtml = `<table class="t"><tr><th>지표</th><th class="num">기준선(중앙값)</th><th class="num">표본</th><th>결과</th></tr>` + (r.anomalies || []).map(a => a.skipped
       ? `<tr><td>${esc(a.series)}</td><td class="num">-</td><td class="num">-</td><td class="faint">${esc(a.skipped)}</td></tr>`
       : `<tr class="${a.anomalies.length ? "s-high" : ""}"><td>${esc(a.series)}</td><td class="num">${esc(a.baseline_median)} <span class="faint">${esc(a.unit || "")}</span></td><td class="num">${a.points}</td><td>${a.anomalies.length
         ? a.anomalies.slice(0, 4).map(x => `<div class="mono" style="font-size:12px"><span class="sv high">z ${x.z}</span> ${esc(x.key)} = ${esc(x.value)}</div>`).join("") : `<span class="st ok">이상 없음</span>`}</td></tr>`).join("") + `</table>`;
     put("#ins", `<section class="pn"><header><h2>경보 상관분석</h2><span class="meta">시간 창 ${r.window_sec}s · 묶음 ${groups.length}개 · 미검증 ${groups.filter(g => !g.verified_incident).length}개</span></header>${gHtml}</section>
-      <section class="pn"><header><h2>통계 이상 탐지</h2><span class="meta">로버스트 z ≥ ${r.z_threshold} · ${esc(rd.method || "")}</span></header>
-        <div class="pb dim" style="font-size:12px;border-bottom:1px solid var(--rule)">데이터: 이벤트 <span class="mono">${p.events}</span>건 · 관측 <span class="mono">${p.distinct_hours}</span>시간 · 보안 이벤트 <span class="mono">${p.security_events}</span>건.
-          ${rd.recommend_ml ? "머신러닝 비교가 가능한 데이터량입니다." : "머신러닝은 보류했습니다: " + esc((rd.reasons || []).join(", ")) + "."}</div>${aHtml}</section>`);
+      <section class="pn"><header><h2>통계 이상 탐지</h2><span class="meta">기준선 중앙값·MAD · z ≥ ${r.z_threshold}</span></header>${aHtml}</section>`);
   } catch (e){ put("#ins", `<div class="pn"><div class="empty">분석 호출 실패: ${esc(e.message)}</div></div>`); }
-  finally { $("#insbtn").disabled = false; }
 }
 
 // ---- 운영 분석 (/api/analytics)
@@ -722,9 +704,9 @@ function bars(items, labelKey, valKey){
   const m = Math.max(1, ...items.map(i => i[valKey]));
   return `<div class="bars pb">` + items.map(i => `<div class="bar"><span class="lab" title="${esc(String(i[labelKey]))}">${esc(String(i[labelKey]))}</span><span class="track"><span class="fill" style="display:block;width:${Math.round(100 * i[valKey] / m)}%"></span></span><span class="val">${i[valKey]}</span></div>`).join("") + `</div>`;
 }
-let anLoaded = false;
+let anLoaded = 0;
 async function loadAnalytics(){
-  $("#anbtn").disabled = true; anLoaded = true;
+  anLoaded = Date.now();
   try {
     const k = await (await fetch("/api/analytics")).json();
     if (k.error){ put("#analytics", `<div class="pn"><div class="empty">분석 실패: ${esc(k.error)}</div></div>`); return; }
@@ -734,14 +716,12 @@ async function loadAnalytics(){
     const ev = (k.events_by_type || []).map(e => ({t:`${e.event_type} (${e.category})`, n:e.n}));
     const cell = (kk, v, s) => `<div class="pc" style="cursor:default"><div class="k">${kk}</div><div class="pv">${esc(v)}</div><div class="s">${esc(s)}</div></div>`;
     const panel = (t, body) => `<section class="pn"><header><h2>${t}</h2></header>${body}</section>`;
-    put("#analytics", `<div class="posture">${cell("사건", k.incidents_total, "조사 기록 적재분")}${cell("해결률", pct(k.agent_success_rate), "해결로 끝난 비율")}${cell("평균 조사·해결", (k.avg_resolution_sec || 0) + "s", "최대 " + (k.max_resolution_sec || 0) + "s")}
-      ${cell("도구 오류율", pct(k.tool_error_rate), "장비 조회 실패 포함")}${cell("승인율", pct(k.approvals.approve_ratio), `요청 ${k.approvals.requested} · 승인 ${k.approvals.approved} · 거부 ${k.approvals.rejected}`)}${cell("반복 장애 장비", (k.recurring_devices || []).length, (k.recurring_devices || []).map(d => d.device).join(", ") || "없음")}${cell("API 비용", "$" + (u.usd || 0).toFixed(2), "호출 " + (u.calls || 0) + "회")}</div>
+    put("#analytics", `<div class="posture">${cell("사건", k.incidents_total, "누적")}${cell("해결률", pct(k.agent_success_rate), "")}${cell("평균 조사·해결", (k.avg_resolution_sec || 0) + "s", "최대 " + (k.max_resolution_sec || 0) + "s")}
+      ${cell("도구 오류율", pct(k.tool_error_rate), "")}${cell("승인율", pct(k.approvals.approve_ratio), `요청 ${k.approvals.requested} · 승인 ${k.approvals.approved} · 거부 ${k.approvals.rejected}`)}${cell("반복 장애 장비", (k.recurring_devices || []).length, (k.recurring_devices || []).map(d => d.device).join(", ") || "없음")}${cell("API 비용", "$" + (u.usd || 0).toFixed(2), "호출 " + (u.calls || 0) + "회")}</div>
       <div class="g2 even">${panel("사건 상태", bars(k.incidents_by_status, "status", "n"))}${panel("장비별 장애 빈도", bars(k.incidents_by_device, "device", "n"))}</div>
       <div class="g2 even">${panel("일자별 사건", bars(k.incidents_daily, "day", "n"))}${panel("이벤트 유형 상위", bars(ev, "t", "n"))}</div>
-      ${hours.length ? panel("시간대별 보안 이벤트", bars(hours, "hour", "n")) : ""}
-      <div class="faint" style="font-size:11.5px">${k.ingest ? `이번 계산에서 로그 ${k.ingest.read}줄을 읽었습니다.` : ""}</div>`);
+      ${hours.length ? panel("시간대별 보안 이벤트", bars(hours, "hour", "n")) : ""}`);
   } catch (e){ put("#analytics", `<div class="pn"><div class="empty">분석 호출 실패: ${esc(e.message)}</div></div>`); }
-  finally { $("#anbtn").disabled = false; }
 }
 
 // ---- 에이전트 패널
@@ -756,7 +736,7 @@ function renderChat(chat){
     if (m.kind === "tool") return `<details class="tool"><summary>${esc(m.text)}</summary>`;
     if (m.kind === "tool_result") return `<pre>${esc(m.text)}</pre></details>`;
     return `<div class="msg ${m.kind}"><div class="t">${label[m.kind] || m.kind} ${esc(hms(m.time))}</div>${m.kind === "agent" ? md(m.text) : esc(m.text).replace(/\n/g, "<br>")}</div>`;
-  }).join("") || `<div class="empty">무엇이든 맡길 수 있습니다. 장애 문의를 그대로 붙여 넣거나, 각 화면의 '요청' 버튼으로 해당 항목을 바로 넘기세요.</div>`;
+  }).join("");
   if (stickBottom) $("#chat").scrollTop = 1e9;
 }
 const agentHidden = () => $("#shell").classList.contains("noagent");
@@ -772,8 +752,8 @@ async function askAgent(text){ setAgent(true); stickBottom = true; await post("/
 function showView(v){
   $$(".nav button[data-view]").forEach(b => b.classList.toggle("on", b.dataset.view === v));
   $$(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
-  if (v === "insights" && !insLoaded) loadInsights();
-  if (v === "analytics" && !anLoaded) loadAnalytics();
+  if (v === "insights" && Date.now() - insLoaded > 60e3) loadInsights();     // 열 때 1분 넘은 결과면 다시 계산
+  if (v === "analytics" && Date.now() - anLoaded > 60e3) loadAnalytics();
   try { localStorage.setItem("secops.view", v); } catch (e) {}
 }
 
@@ -804,13 +784,12 @@ async function openWebAttacks(){
     <div class="box code">${w.samples.map(s => `${esc(s.method)} ${esc(s.path)}  [${esc(s.note)}]  ${esc(s.input)}`).join("\n")}</div></div></section>`).join("") || `<div class="empty">탐지된 웹 공격이 없습니다.</div>`);
   $("#webdlg").showModal();
 }
-$("#webscan").onclick = openWebAttacks;
 
 async function openAudit(id){
   const a = await (await fetch(`/api/audit?id=${encodeURIComponent(id)}`)).json();
   const devs = a.devices;
   $("#audittitle").textContent = `점검 결과 ${a.time}`;
-  $("#auditmeta").textContent = `기준: ${a.standard} · 대상: ${devs.join(", ")}` + (Object.keys(a.errors || {}).length ? ` · 수집 실패: ${Object.keys(a.errors).join(", ")}` : "") + " · 칸에 마우스를 올리면 근거가 보입니다. * 는 에이전트가 판정·정정한 칸";
+  $("#auditmeta").textContent = `기준: ${a.standard} · 대상: ${devs.join(", ")}` + (Object.keys(a.errors || {}).length ? ` · 수집 실패: ${Object.keys(a.errors).join(", ")}` : "") + " · * 에이전트 판정";
   $("#auditreport").innerHTML = a.report ? md(a.report) : "";
   const order = {"상":0, "중":1, "하":2};
   const rows = [...a.items].sort((x, y) => order[x.importance] - order[y.importance] || x.code.localeCompare(y.code));
@@ -821,10 +800,7 @@ async function openAudit(id){
   $("#auditdlg").showModal();
 }
 $("#auditrule").onclick = async () => { const r = await post("/api/audit/run", {}); if (r.error) alert(r.error); refresh(); };
-$("#insbtn").onclick = loadInsights;
-$("#anbtn").onclick = loadAnalytics;
 $("#agentbtn").onclick = () => setAgent(agentHidden());
-$("#agentclose").onclick = () => setAgent(false);
 $("#ask").addEventListener("submit", async e => { e.preventDefault(); const t = $("#q").value.trim(); if (!t) return; $("#q").value = ""; stickBottom = true; await post("/api/chat", {text:t}); refresh(); });
 $("#resetbtn").onclick = async () => {
   if (!confirm("새 대화를 시작할까요? 지금까지의 대화는 보관되고, 에이전트는 이전 내용을 기억하지 않습니다.")) return;

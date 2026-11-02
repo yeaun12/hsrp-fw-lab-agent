@@ -42,8 +42,48 @@ header{display:flex;align-items:center;gap:16px;padding:12px 22px;border-bottom:
 #opsum{font-weight:600;border:1px solid var(--line)}
 #opsum.ok{border-color:transparent}#opsum.bad{border-color:transparent}
 .spacer{flex:1}
-main{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1.25fr) minmax(0,1fr);gap:16px;padding:16px 22px}
-@media (max-width:900px){body{height:auto}main{grid-template-columns:1fr;padding:14px}.rail{flex-direction:row;flex-wrap:wrap;gap:6px}.navitem{flex:0 0 auto}.chatpanel{min-height:58vh}.views{min-height:52vh}}
+main{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1.35fr);gap:16px;padding:16px 22px}
+main.nochat{grid-template-columns:auto minmax(0,1fr)}main.nochat .chatpanel{display:none}
+@media (max-width:900px){body{height:auto}main,main.nochat{grid-template-columns:1fr;padding:14px}.rail{flex-direction:row;flex-wrap:wrap;gap:6px}.navitem{flex:0 0 auto}.chatpanel{min-height:58vh}.views{min-height:52vh}}
+.rail .sep{height:1px;background:var(--line);margin:6px 4px}
+.navitem.toggle{color:var(--ink);border-color:var(--line)}
+.ov{container-type:inline-size;display:flex;flex-direction:column;gap:14px}
+.ovgrid{display:grid;grid-template-columns:1fr;gap:14px}
+@container (min-width:860px){.ovgrid{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}}
+.ovh{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.ovkpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px}
+.ovk{background:var(--panel2);border:1px solid var(--line2);border-radius:9px;padding:10px 12px;cursor:pointer;transition:border-color .12s}
+.ovk:hover{border-color:var(--accent)}
+.ovk .n{font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1.15}.ovk .l{font-size:11px;color:var(--muted);margin-top:3px}
+.ovk.ok .n{color:var(--ok)}.ovk.warn .n{color:var(--warn)}.ovk.bad .n{color:var(--bad)}
+.topowrap,.tlwrap{background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:12px 14px;min-width:0}
+.topo{width:100%;height:auto;display:block}
+.topo .lk{stroke:var(--line);stroke-width:2;fill:none}
+.topo .lk.po{stroke-width:4}
+.topo .lk.live{stroke:var(--ok);stroke-dasharray:7 6;animation:flow 1.1s linear infinite}
+.topo .lk.down{stroke:var(--bad);stroke-dasharray:3 5}
+@keyframes flow{to{stroke-dashoffset:-13}}
+.topo .nd rect{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+.topo .nd text{fill:var(--ink);font-size:12px;font-weight:600;text-anchor:middle}
+.topo .nd text.r{fill:var(--muted);font-size:9.5px;font-weight:500}
+.topo .nd .sd{fill:var(--line)}
+.topo .nd.ok rect{stroke:var(--ok)}.topo .nd.ok .sd{fill:var(--ok)}
+.topo .nd.bad rect{stroke:var(--bad);fill:var(--bad-weak)}.topo .nd.bad .sd{fill:var(--bad)}
+.topo .nd.unk rect{stroke:var(--faint);stroke-dasharray:3 3}
+.topo .nd.na text{fill:var(--muted)}
+.topo .hs{fill:var(--accent);font-size:10px;font-weight:700;text-anchor:middle}
+.topo .po-l{fill:var(--muted);font-size:9.5px;text-anchor:middle}
+@media (prefers-reduced-motion:reduce){.topo .lk.live{animation:none}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:18px;border-top:2px solid var(--ok);vertical-align:middle;margin-right:5px}
+.legend i.d{border-top:2px dashed var(--bad)}.legend i.n{border-top-color:var(--line)}
+.tl{display:flex;align-items:center;gap:9px;padding:7px 6px;border-bottom:1px solid var(--line2);font-size:12.5px;cursor:pointer;border-radius:6px}
+.tl:last-child{border-bottom:0}.tl:hover{background:var(--chip)}
+.tdot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:var(--faint)}
+.tdot.high{background:var(--bad)}.tdot.medium{background:var(--warn)}.tdot.info,.tdot.low{background:var(--ok)}
+.tt{color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto;font-size:11.5px}
+.tk{font-size:10.5px;color:var(--muted);background:var(--chip);border-radius:4px;padding:0 5px;flex:0 0 auto}
+.tx{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rail{display:flex;flex-direction:column;gap:4px;min-width:0}
 .navitem{display:flex;align-items:center;gap:8px;background:transparent;color:var(--muted);border:1px solid transparent;border-radius:8px;padding:9px 12px;font-size:12.5px;font-weight:500;white-space:nowrap;text-align:left;box-shadow:none;transition:background .12s,color .12s}
 .navitem:hover{background:var(--chip);color:var(--ink);filter:none}
@@ -139,7 +179,10 @@ details.case pre{white-space:pre-wrap;background:var(--code);padding:7px;border-
 </header>
 <main>
   <nav class="rail">
-    <button class="navitem active" data-view="cases">조사 기록<span class="nb" id="nb-cases"></span></button>
+    <button class="navitem toggle" id="chattoggle" title="대화창을 숨기면 선택한 섹션이 넓게 보입니다">대화창 숨기기<span class="nb" id="nb-chat"></span></button>
+    <div class="sep"></div>
+    <button class="navitem active" data-view="overview">개요</button>
+    <button class="navitem" data-view="cases">조사 기록<span class="nb" id="nb-cases"></span></button>
     <button class="navitem" data-view="analytics">운영 분석</button>
     <button class="navitem" data-view="approvals">승인 대기<span class="nb" id="nb-appr"></span></button>
     <button class="navitem" data-view="audits">보안 점검</button>
@@ -159,7 +202,18 @@ details.case pre{white-space:pre-wrap;background:var(--code);padding:7px;border-
     <form id="ask"><input id="q" placeholder="예: 지사에서 인터넷이 느리다는데 확인해 줄래요?" autocomplete="off"><button>보내기</button></form>
   </section>
   <div class="views">
-    <section class="panel view active" data-view="cases"><h2>조사 기록 (AI 판단 근거) <span class="count" id="casecount"></span></h2><div class="body" id="cases"></div></section>
+    <section class="panel view active" data-view="overview"><h2>운영 개요 <span class="count" id="ovupd"></span></h2>
+      <div class="body"><div class="ov">
+        <div class="ovkpis" id="ovkpis"></div>
+        <div class="ovgrid">
+          <div class="topowrap"><div class="ovh">네트워크 토폴로지 · 실시간</div>
+            <svg class="topo" id="topo" viewBox="0 0 780 410" role="img" aria-label="사내 네트워크 토폴로지와 장비 상태"></svg>
+            <div class="legend"><span><i></i>양쪽 장비 모두 관리 응답 중 (트래픽 양 아님)</span><span><i class="d"></i>응답 없는 장비 구간</span><span><i class="n"></i>감시 대상 아닌 구간</span></div>
+          </div>
+          <div class="tlwrap"><div class="ovh">최근 이벤트</div><div id="ovtl"></div></div>
+        </div>
+      </div></div></section>
+    <section class="panel view" data-view="cases"><h2>조사 기록 (AI 판단 근거) <span class="count" id="casecount"></span></h2><div class="body" id="cases"></div></section>
     <section class="panel view" data-view="analytics"><h2>운영 분석 (KPI) <span class="spacer"></span><button class="ghost" id="anbtn" style="font-size:12px;padding:4px 10px">분석 새로고침</button></h2>
       <div class="body" id="analytics"><div class="empty">"분석 새로고침"을 누르면 저장된 운영 데이터(Phase 5 파이프라인)로 KPI를 계산해 보여줍니다.</div></div></section>
     <section class="panel view" data-view="approvals"><h2>승인 대기 <span class="count" id="apprcount"></span></h2><div class="body" id="approvals"></div></section>
@@ -282,6 +336,9 @@ async function refresh(){
     $("#opsum").innerHTML = `장비 ${_up}/${_names.length} · 미해결 ${_open} · 승인대기 ${_pend} · 긴급경보 ${_sec}`;
     $("#opsum").className = "chip" + (_warn ? " bad" : " ok");
     setnb("#nb-cases", _open); setnb("#nb-appr", _pend); setnb("#nb-alert", d.alerts.length);
+    chatLen = d.chat.length; seenChat = Math.min(seenChat, chatLen);
+    setnb("#nb-chat", chatHidden() ? chatLen - seenChat : 0);
+    renderOverview(d);
   } catch(e) { $("#poll").textContent = "에이전트 서버 연결 끊김"; }
 }
 let caseOpen = {};
@@ -415,12 +472,85 @@ async function loadAnalytics(){
 $("#anbtn").onclick = loadAnalytics;
 function setnb(sel, n){ const e = $(sel); if (e) e.textContent = n > 0 ? n : ""; }
 function showView(v){
-  document.querySelectorAll(".navitem").forEach(b => b.classList.toggle("active", b.dataset.view === v));
+  document.querySelectorAll(".navitem[data-view]").forEach(b => b.classList.toggle("active", b.dataset.view === v));
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.dataset.view === v));
-  try { localStorage.setItem("dashview", v); } catch(e) {}
+  try { localStorage.setItem("dashview2", v); } catch(e) {}
 }
-document.querySelectorAll(".navitem").forEach(b => b.onclick = () => showView(b.dataset.view));
-try { const v = localStorage.getItem("dashview"); if (v && document.querySelector(`.navitem[data-view="${v}"]`)) showView(v); } catch(e) {}
+document.querySelectorAll(".navitem[data-view]").forEach(b => b.onclick = () => showView(b.dataset.view));
+try { const v = localStorage.getItem("dashview2"); if (v && document.querySelector(`.navitem[data-view="${v}"]`)) showView(v); } catch(e) {}
+// 대화창 접기: 숨기면 선택한 섹션이 넓게 보이고, 숨긴 동안 새 대화 수를 배지로 알린다.
+let chatLen = 0, seenChat = 0;
+const chatHidden = () => $("main").classList.contains("nochat");
+function setChat(hidden){
+  $("main").classList.toggle("nochat", hidden);
+  $("#chattoggle").firstChild.textContent = hidden ? "대화창 열기" : "대화창 숨기기";
+  seenChat = chatLen; setnb("#nb-chat", 0);
+  if (!hidden) { stickBottom = true; $("#chat").scrollTop = 1e9; }
+  try { localStorage.setItem("nochat", hidden ? "1" : ""); } catch(e) {}
+}
+$("#chattoggle").onclick = () => setChat(!chatHidden());
+try { if (localStorage.getItem("nochat")) setChat(true); } catch(e) {}
+// 개요: 실제 랩 링크(GNS3 프로젝트) 기준 토폴로지. 감시 대상은 /api/state 장비 상태로 색을 바꾸고,
+// 흐르는 선은 양 끝 장비가 모두 관리 응답 중이라는 뜻일 뿐 트래픽 양을 나타내지 않는다.
+const OV_MON = ["CORE1","CORE2","ASW1","ASW2","BRANCH","FW"];
+const OPEN_ST = ["investigating","awaiting_approval","executing","verifying","needs_confirm","unresolved"];
+const TOPO_N = {ISP1:[250,40,"ISP 1"], ISP2:[530,40,"ISP 2"], FW:[390,115,"pfSense 방화벽"], WEB:[640,115,"DMZ 웹 서버"],
+  SW1:[390,190,"업링크 스위치"], CORE1:[250,270,"L3 코어"], CORE2:[530,270,"L3 코어"], BRANCH:[700,270,"지사 · OSPF"],
+  ASW1:[250,370,"액세스"], ASW2:[530,370,"액세스"], SRV:[700,370,"DB 서버"]};
+const TOPO_L = [["ISP1","ISP2"],["ISP1","FW"],["ISP2","FW"],["FW","WEB"],["FW","SW1"],["SW1","CORE1"],["SW1","CORE2"],
+  ["CORE1","CORE2","po"],["CORE1","ASW1"],["CORE2","ASW1"],["CORE1","ASW2"],["CORE2","ASW2"],["CORE2","BRANCH"],
+  ["CORE1","BRANCH","arc"],["ASW2","SRV"]];
+function buildTopo(){
+  const L = TOPO_L.map(([a,b,k], i) => { const [x1,y1] = TOPO_N[a], [x2,y2] = TOPO_N[b];
+    const d = k === "arc" ? `M${x1} ${y1} Q${(x1+x2)/2} ${y1-95} ${x2} ${y2}` : `M${x1} ${y1} L${x2} ${y2}`;
+    return `<path class="lk${k==="po"?" po":""}" id="lk${i}" d="${d}"/>`; }).join("");
+  const N = Object.entries(TOPO_N).map(([n,[x,y,r]]) => `<g class="nd na" id="nd-${n}" transform="translate(${x} ${y})">` +
+    `<title id="tt-${n}">${n}</title><rect x="-52" y="-21" width="104" height="42" rx="8"/><circle class="sd" cx="-41" cy="-6" r="4"/>` +
+    `<text y="-2">${n}</text><text class="r" y="12">${r}</text><text class="hs" id="hs-${n}" y="36"></text></g>`).join("");
+  $("#topo").innerHTML = L + `<text class="po-l" x="390" y="262">HSRP 페어 · 2링크</text>` + N;
+}
+let ovKpiCache = "", ovTlCache = "";
+function renderOverview(d){
+  const s = d.status || {}, dev = s.devices || {}, groups = Object.entries(s.hsrp || {});
+  const st = n => !OV_MON.includes(n) ? "na" : !dev[n] ? "unk" : dev[n].up ? "ok" : "bad";
+  for (const n in TOPO_N){
+    $("#nd-"+n).setAttribute("class", "nd " + st(n));
+    const x = dev[n];
+    $("#tt-"+n).textContent = !OV_MON.includes(n) ? `${n}: 에이전트 감시 대상 아님`
+      : !x ? `${n}: 아직 확인 전` : `${n}: ${x.up ? "관리 접속 정상" : "응답 없음 — " + (x.error || "")}${x.checked ? " (" + x.checked.slice(11) + ")" : ""}`;
+  }
+  TOPO_L.forEach(([a,b,k], i) => { const sa = st(a), sb = st(b);
+    const cls = "lk" + (k==="po" ? " po" : "") + (sa==="bad"||sb==="bad" ? " down" : sa==="ok"&&sb==="ok" ? " live" : "");
+    const e = $("#lk"+i); if (e.getAttribute("class") !== cls) e.setAttribute("class", cls); });
+  for (const c of ["CORE1","CORE2"]){
+    const act = groups.filter(([, v]) => v.active === c).map(([, v]) => String(v.interface).replace(/^Vl/i, "VL"));
+    $("#hs-"+c).textContent = !groups.length ? "" : act.length ? "Active · " + act.join(" ") : (dev[c] && dev[c].up ? "Standby" : "");
+  }
+  const up = OV_MON.filter(n => dev[n] && dev[n].up).length;
+  const open = (d.cases||[]).filter(c => OPEN_ST.includes(c.status)).length;
+  const pend = (d.approvals||[]).filter(a => a.status === "pending").length;
+  const high = (d.alerts||[]).filter(a => a.severity === "high").length;
+  const hsBad = groups.some(([, v]) => v.active === "없음" || v.active === "둘 다");
+  const web = (s.web_attacks||[]).length, u = d.usage || {};
+  const k = [[`${up}/${OV_MON.length}`, "장비 관리 접속", up === OV_MON.length ? "ok" : "bad", "infra"],
+    [groups.length ? (hsBad ? "이상" : "정상") : "-", "HSRP 이중화", !groups.length ? "" : hsBad ? "bad" : "ok", "infra"],
+    [open, "미해결 조사", open ? "warn" : "ok", "cases"], [pend, "승인 대기", pend ? "warn" : "ok", "approvals"],
+    [high, "긴급 경보", high ? "bad" : "ok", "alerts"], [(s.blocked_ips||[]).length, "FW 차단 IP", "", "infra"],
+    [web, "웹 공격 출발지", web ? "bad" : "", "web"], [`${u.calls||0}회`, `AI 호출 · $${(u.usd||0).toFixed(2)}`, "", "analytics"]];
+  const kh = k.map(([n,l,c,v]) => `<div class="ovk ${c}" data-go="${v}"><div class="n">${esc(n)}</div><div class="l">${esc(l)}</div></div>`).join("");
+  if (kh !== ovKpiCache) { ovKpiCache = kh; $("#ovkpis").innerHTML = kh; }
+  const CST = {investigating:"조사 중", awaiting_approval:"승인 대기", executing:"조치 중", verifying:"검증 중", resolved:"해결", unresolved:"미해결", needs_confirm:"확인 요청"};
+  const ev = [...(d.alerts||[]).map(a => ({t:a.time, sev:a.severity, kind:"경보", go:"alerts", txt:a.title})),
+    ...(d.cases||[]).map(c => ({t:c.started, sev:c.status==="resolved" ? "info" : c.status==="unresolved" ? "high" : "medium", kind:"조사", go:"cases",
+      txt:`#${c.id} ${(c.trigger||"").replace(/^\[.*?\]\s*/,"").slice(0,70)} — ${CST[c.status]||c.status}`}))]
+    .filter(e => e.t).sort((a,b) => a.t < b.t ? 1 : -1).slice(0, 9);
+  const th = ev.map(e => `<div class="tl" data-go="${e.go}" title="${esc(e.txt)}"><span class="tdot ${esc(e.sev)}"></span><span class="tt">${esc(e.t.slice(5,16))}</span><span class="tk">${e.kind}</span><span class="tx">${esc(e.txt)}</span></div>`).join("")
+    || `<div class="empty">아직 이벤트가 없습니다. 감시 경보나 조사가 생기면 시간순으로 쌓입니다.</div>`;
+  if (th !== ovTlCache) { ovTlCache = th; $("#ovtl").innerHTML = th; }
+  $("#ovupd").textContent = s.updated ? `감시 갱신 ${s.updated.slice(11)}` : "";
+}
+document.querySelector(".ov").addEventListener("click", e => { const g = e.target.closest("[data-go]"); if (g) showView(g.dataset.go); });
+buildTopo();
 refresh(); setInterval(refresh, 2000);
 </script>
 </body>

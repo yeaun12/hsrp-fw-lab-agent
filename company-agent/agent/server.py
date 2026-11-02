@@ -5,6 +5,7 @@
 import json
 import os
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import audit
@@ -103,6 +104,7 @@ class Handler(BaseHTTPRequestHandler):
                                  for n, d in config.DEVICES.items()}
             snap["scan_min_ports"] = config.SCAN_MIN_PORTS
             snap["scan_window_sec"] = config.SCAN_WINDOW_SEC
+            snap["now"] = state.now()           # 경과 시간은 서버 시각 기준으로 계산(브라우저 시계와 어긋날 수 있음)
             self._json(snap)
         elif self.path == "/api/analytics":
             try:
@@ -114,6 +116,37 @@ class Handler(BaseHTTPRequestHandler):
                 conn.close()
                 k["ingest"] = stats
                 self._json(k)
+            except Exception as e:
+                self._json({"error": f"{type(e).__name__}: {e}"}, 500)
+        elif self.path == "/api/overview":
+            # 개요 화면용 추세·처리 단계. 경보는 감시가 올린 것만 센다
+            # (같은 경보가 에이전트 대화로 전달되며 conversation 범주에 한 번 더 적재되므로 제외).
+            try:
+                import warehouse
+                db = os.path.join(config.DATA_DIR, "ops_dw.sqlite")
+                conn, _ = warehouse.ingest(config.DATA_DIR, db)
+                today = time.strftime("%Y-%m-%d")
+                alert = "event_type='alert' AND category<>'conversation'"
+                rows = lambda sql, *a: [dict(r) for r in conn.execute(sql, a)]
+                one = lambda sql, *a: conn.execute(sql, a).fetchone()[0] or 0
+                appr = {r["event_type"]: r["n"] for r in rows("SELECT * FROM v_approvals")}
+                out = {
+                    "today": today,
+                    "alerts_daily": rows(f"SELECT substr(occurred_at,1,10) day, COUNT(*) n FROM events WHERE {alert} "
+                                         "GROUP BY day ORDER BY day"),
+                    "incidents_daily": rows("SELECT day, n FROM v_incidents_daily ORDER BY day"),
+                    "alerts_today_hourly": rows(f"SELECT CAST(substr(occurred_at,12,2) AS INTEGER) h, COUNT(*) n FROM events "
+                                                f"WHERE {alert} AND occurred_at LIKE ? GROUP BY h", today + "%"),
+                    "funnel": {"alerts": one(f"SELECT COUNT(*) FROM events WHERE {alert}"),
+                               "incidents": one("SELECT COUNT(*) FROM incidents"),
+                               "tooled": one("SELECT COUNT(DISTINCT incident_id) FROM tool_calls"),
+                               "proposed": appr.get("approval_requested", 0),
+                               "approved": appr.get("approved", 0)},
+                    "by_device": [r for r in rows("SELECT device, n FROM v_incident_device ORDER BY n DESC")
+                                  if r["device"] in config.DEVICES][:6],
+                }
+                conn.close()
+                self._json(out)
             except Exception as e:
                 self._json({"error": f"{type(e).__name__}: {e}"}, 500)
         elif self.path == "/api/insights":

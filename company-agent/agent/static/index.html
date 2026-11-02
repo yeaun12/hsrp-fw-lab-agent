@@ -152,6 +152,65 @@ table.t{width:100%;border-collapse:collapse;font-size:12.5px}
 .tl:last-child{border-bottom:0}.tl:hover{background:var(--surface-2)}
 .tl .tt{font-family:var(--font-data);font-size:11.5px;color:var(--fg-3)}
 
+/* 개요(홈) */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kc{background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:12px 14px;text-align:left;min-width:0}
+.kc:hover{border-color:var(--rule-2)}
+.kc.crit{box-shadow:inset 0 3px var(--crit)}.kc.high{box-shadow:inset 0 3px var(--high)}
+.kc .k{font-size:11.5px;color:var(--fg-2)}
+.kc .row{display:flex;align-items:flex-end;gap:8px;min-height:32px}
+.kc .kn{font-family:var(--font-data);font-size:24px;font-weight:600;line-height:1.25;font-variant-numeric:tabular-nums}
+.kc .kn.word{font-family:var(--font-ui);font-size:22px;font-weight:700}
+.kc.crit .kn{color:var(--crit)}.kc.high .kn{color:var(--high)}.kc.ok .kn{color:var(--ok)}
+.kc .d{font-family:var(--font-data);font-size:12px;padding-bottom:5px;white-space:nowrap}
+.kc .d.down{color:var(--ok)}.kc .d.up{color:var(--high)}
+.kc .spk{margin-left:auto;flex:0 0 auto}.spk polyline{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round}.spk circle{fill:var(--accent)}
+.kc .s{font-size:11.5px;color:var(--fg-2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ovrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,560px) minmax(0,1fr);gap:14px;align-items:start}
+@container (max-width:1180px){.ovrow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.ovnet{grid-column:1 / -1;order:-1}}
+@container (max-width:760px){.ovrow{grid-template-columns:minmax(0,1fr)}}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+@container (max-width:980px){.g3{grid-template-columns:minmax(0,1fr)}}
+.lv{padding:12px 14px;border-bottom:1px solid var(--rule);display:grid;gap:3px}
+.lv-t{display:flex;gap:10px;align-items:baseline}.lv-t b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lv-t .mono{margin-left:auto}
+.lv-run{color:var(--accent);font-size:12px}
+.lv-sub{font-size:12px}
+ol.steps{list-style:none;margin:0;padding:12px 14px;display:grid}
+ol.steps li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:10px;position:relative;padding-bottom:10px;font-size:12.5px}
+ol.steps li::before{content:"";position:absolute;left:6px;top:15px;bottom:0;width:2px;background:var(--rule-2)}
+ol.steps li:last-child{padding-bottom:0}ol.steps li:last-child::before{display:none}
+ol.steps .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);margin-top:4px;position:relative}
+ol.steps li.run .dot{animation:step 1.2s ease-in-out infinite}
+@keyframes step{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){ol.steps li.run .dot{animation:none}}
+ol.steps .tt{color:var(--fg-2);font-size:11.5px}ol.steps .tn{color:var(--accent);font-size:12px}
+.mtwrap{padding:10px 12px;display:flex;justify-content:center}
+.mtopo{display:block;width:100%;max-width:640px;height:auto}
+.mtopo .ml{stroke:var(--rule-2);stroke-width:2;stroke-linecap:round}
+.mtopo .ml.live{stroke:var(--ok)}.mtopo .ml.down{stroke:var(--crit);stroke-dasharray:4 4}
+.mtopo .mn rect{fill:var(--surface);stroke:var(--rule-2);stroke-width:1.2}
+.mtopo .mn .sq{stroke:none;fill:var(--rule-2)}
+.mtopo .mn text{fill:var(--fg);font-family:var(--font-data);font-size:12px;font-weight:700}
+.mtopo .mn .sub{fill:var(--fg-2);font-weight:400}
+.mtopo .mn.na text{fill:var(--fg-2)}
+.mtopo .mn.ok>rect:first-of-type{stroke:var(--ok)}.mtopo .mn.ok .sq{fill:var(--ok)}
+.mtopo .mn.bad>rect:first-of-type{stroke:var(--crit);fill:var(--crit-bg)}.mtopo .mn.bad .sq{fill:var(--crit)}
+.mtopo .mn.unk>rect:first-of-type{stroke-dasharray:3 3}
+.mtopo .mn.atk>rect:first-of-type{stroke:var(--high);fill:var(--high-bg)}
+.mtopo .mn.mon{cursor:pointer}
+.mtopo .mh{fill:var(--accent);font-family:var(--font-data);font-size:11px}
+.mtopo .mnote{fill:var(--fg-2);font-size:11px}
+.trend{display:block;width:100%;height:auto}
+.trend .g{stroke:var(--rule)}.trend .b{stroke:var(--rule-2)}
+.trend .a{fill:var(--accent);fill-opacity:.18}.trend .l{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round}.trend .e{fill:var(--accent)}
+.axis{display:flex;justify-content:space-between;font-size:11.5px;margin-top:4px}
+.bars2{display:grid;gap:8px}
+.b2{display:grid;grid-template-columns:76px minmax(0,1fr) 36px;gap:10px;align-items:center;font-size:12.5px}
+.b2 .tr{height:14px;background:var(--surface-2);border:1px solid var(--rule)}
+.b2 .fl{display:block;height:100%;background:var(--accent)}.b2 .fl.high{background:var(--high)}.b2 .fl.ok{background:var(--ok)}
+.b2 .num{text-align:right}
+
 /* 조사 기록 */
 details.case{border-bottom:1px solid var(--rule)}
 details.case:last-child{border-bottom:0}
@@ -265,7 +324,8 @@ dialog input,dialog select{width:100%;padding:7px 9px;margin:6px 0;border:1px so
 <div class="shell" id="shell">
   <nav class="nav" id="nav" aria-label="주 메뉴">
     <h6>개요</h6>
-    <button data-view="brief" class="on" aria-current="page">브리핑</button>
+    <button data-view="overview" class="on" aria-current="page">개요</button>
+    <button data-view="brief">브리핑</button>
     <h6>대응</h6>
     <button data-view="decide">결정 대기<span class="n" id="n-decide"></span></button>
     <button data-view="cases">조사 기록<span class="n" id="n-cases"></span></button>
@@ -284,8 +344,26 @@ dialog input,dialog select{width:100%;padding:7px 9px;margin:6px 0;border:1px so
   </nav>
 
   <main class="main" id="main">
+    <!-- 개요(홈) -->
+    <section class="view on" id="v-overview">
+      <div class="vh"><h1>개요</h1><span class="mono dim" style="font-size:12px" id="ov-asof"></span></div>
+      <div class="kpis" id="ov-kpis"></div>
+      <div class="ovrow">
+        <section class="pn"><header><h2>에이전트 실시간</h2><span class="meta" id="live-state"></span></header><div id="live"></div></section>
+        <section class="pn ovnet"><header><h2>네트워크</h2><span class="meta" id="net-meta"></span></header>
+          <div class="mtwrap"><svg class="mtopo" id="mtopo" viewBox="0 0 640 476" role="img" aria-label="사내 네트워크 상태"></svg></div>
+          <div class="legend"><span><i></i>정상</span><span><i class="d"></i>무응답</span><span><i class="n"></i>미감시</span></div></section>
+        <section class="pn"><header><h2>결정 필요</h2><span class="meta" id="ovdq-meta"></span></header><div id="ovdq"></div></section>
+      </div>
+      <div class="g3">
+        <section class="pn"><header><h2>오늘 경보 추이</h2><span class="meta mono" id="tr-meta"></span></header><div class="pb" id="trend"><div class="empty">불러오는 중</div></div></section>
+        <section class="pn"><header><h2>처리 단계</h2><span class="meta">누적</span></header><div class="pb" id="funnel"><div class="empty">불러오는 중</div></div></section>
+        <section class="pn"><header><h2>장비별 사건</h2><span class="meta mono" id="bydev-meta"></span></header><div class="pb" id="bydev"><div class="empty">불러오는 중</div></div></section>
+      </div>
+    </section>
+
     <!-- 브리핑 -->
-    <section class="view on" id="v-brief">
+    <section class="view" id="v-brief">
       <div class="vh"><h1>브리핑</h1></div>
       <div class="posture" id="posture"></div>
       <div class="g2">
@@ -438,7 +516,7 @@ const SEV = {high:["HIGH","crit"], medium:["MED","high"], low:["LOW","med"], inf
 const sevTag = s => { const [l, c] = SEV[s] || [String(s||"-").toUpperCase(), "info"]; return `<span class="sv ${c}">${esc(l)}</span>`; };
 const caseSt = s => { const [l, c] = CASE_ST[s] || [s, "info"]; return `<span class="st ${c}">${esc(l)}</span>`; };
 // 경보로 열린 조사의 접수 문구 앞머리("[감시 경보] - #1 [high]")를 걷어 증상만 남긴다
-const trig = c => (c.trigger || "").replace(/^\[.*?\]\s*/, "").replace(/^-?\s*#\d+\s*/, "").replace(/^\[(high|medium|low|info)\]\s*/i, "");
+const trig = c => (c.trigger || "").replace(/^\[.*?\]\s*/, "").replace(/^-?\s*#\d+\s*/, "").replace(/^\[(high|medium|low|info)\]\s*/i, "").split("\n")[0].trim();
 const tdate = t => t ? new Date(t.replace(" ", "T")) : null;
 
 let S = null;
@@ -732,6 +810,132 @@ async function loadAnalytics(){
   } catch (e){ put("#analytics", `<div class="pn"><div class="empty">분석 호출 실패: ${esc(e.message)}</div></div>`); }
 }
 
+// ---- 개요(홈): 한눈 지표 + 에이전트 실시간 + 네트워크 + 추세
+const TOOL_KO = {list_devices:"장비 목록 조회", ios_show:"장비 조회 명령", firewall_status:"방화벽 상태 조회", firewall_blocked_traffic:"차단 트래픽 분석",
+  get_alerts:"최근 경보 조회", request_firewall_block:"차단 승인 요청", request_firewall_unblock:"차단 해제 승인 요청", request_ios_config:"설정 변경 승인 요청",
+  run_security_audit:"보안 점검 실행", get_checklist_item:"점검 항목 조회", web_attack_scan:"웹 로그 분석", save_audit_report:"점검 보고서 저장",
+  report_investigation:"판단 근거 저장"};
+let OV = null;
+async function loadOverview(){
+  try { const r = await (await fetch("/api/overview")).json(); if (!r.error){ OV = r; if (S) renderOverview(); } } catch (e) {}
+}
+const secsBetween = (a, b) => a && b ? Math.max(0, Math.round((tdate(b) - tdate(a)) / 1000)) : 0;
+function spark(vals){
+  if (vals.length < 2) return "";
+  const max = Math.max(1, ...vals), step = 68 / (vals.length - 1), p = vals.map((v, i) => [2 + i * step, 25 - v / max * 21]), e = p[p.length - 1];
+  return `<svg class="spk" width="72" height="28" viewBox="0 0 72 28" aria-hidden="true"><polyline points="${p.map(q => q[0].toFixed(1) + "," + q[1].toFixed(1)).join(" ")}"/><circle cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="3"/></svg>`;
+}
+// 오늘 값과 직전 운영일(기록이 있는 마지막 날) 비교. 랩은 매일 켜지지 않으므로 '어제' 대신 직전 운영일을 쓴다.
+function dayCompare(list, today){
+  const t = (list.find(d => d.day === today) || {}).n || 0, before = list.filter(d => d.day < today);
+  return {t, prev: before[before.length - 1], series: before.slice(-6).map(d => d.n).concat([t])};
+}
+function renderOvKpis(){
+  const s = S.status || {}, dev = s.devices || {}, [tl, tc, tw] = threatLevel(threatRows());
+  const items = decisionItems(), appr = (S.approvals || []).filter(a => a.status === "pending").length;
+  const up = MON.filter(n => dev[n] && dev[n].up).length, down = MON.filter(n => dev[n] && !dev[n].up), u = S.usage || {};
+  const card = (go, cls, k, v, extra, sub, word) => `<button class="kc ${cls}" data-go="${go}"><div class="k">${k}</div><div class="row"><span class="kn${word ? " word" : ""}">${esc(v)}</span>${extra || ""}</div><div class="s" title="${esc(sub)}">${esc(sub)}</div></button>`;
+  let h = card("threats", tc, "위협 수준", tl, "", tw, true) +
+    card("decide", items.length ? "high" : "ok", "결정 대기", items.length, "", `승인 ${appr} · 확인 요청 ${items.length - appr}`);
+  if (OV) for (const [k, list, go] of [["오늘 경보", OV.alerts_daily, "alerts"], ["오늘 조사", OV.incidents_daily, "cases"]]){
+    const c = dayCompare(list, OV.today), pct = c.prev ? Math.round((c.t - c.prev.n) / c.prev.n * 100) : null;
+    const d = pct == null ? "" : `<span class="d ${pct <= 0 ? "down" : "up"}">${pct <= 0 ? "▼" : "▲"} ${Math.abs(pct)}%</span>`;
+    h += card(go, "", k, c.t, d + spark(c.series), c.prev ? `직전 운영일 ${c.prev.day.slice(5).replace("-", "/")} ${c.prev.n}건` : "비교 기록 없음");
+  }
+  h += card("infra", up === MON.length ? "ok" : "crit", "장비 응답", `${up}/${MON.length}`, "", down.length ? "무응답: " + down.join(", ") : "모두 응답") +
+    card("analytics", "", "AI 호출", `${u.calls || 0}회`, "", `비용 $${(u.usd || 0).toFixed(2)}`);
+  put("#ov-kpis", h);
+}
+// 에이전트 실시간: 작업 중이면 지금 실행 중인 도구·대상·경과 시간, 쉬는 중이면 마지막 조사의 실제 단계
+function renderLive(){
+  const busy = S.agent_busy, cs = S.cases || [], chat = S.chat || [], last = chat[chat.length - 1];
+  const running = busy && last && last.kind === "tool" ? last : null;
+  let dev = "";
+  if (running){ try { const a = JSON.parse(running.text.slice(running.text.indexOf(" ") + 1)); dev = a.device || a.host || a.ip || ""; } catch (e) {} }
+  put("#live-state", busy ? `<span class="led busy"></span> 작업 중` : `<span class="led ok"></span> 대기 중`);
+  const c = busy ? cs.find(x => ["investigating", "verifying", "executing"].includes(x.status)) : cs[0];
+  let head;
+  if (busy) head = `<div class="lv"><div class="lv-t"><b>${c ? `조사 #${c.id} 진행 중` : "요청 처리 중"}</b><span class="mono dim">${c ? secsBetween(c.started, S.now) + "초" : ""}</span></div>
+      <div class="mono lv-run">${running ? esc(`${TOOL_KO[running.tool] || running.tool} · ${running.tool}${dev ? " [" + dev + "]" : ""}`) + " 실행 중" : "다음 단계 판단 중"}</div>
+      ${c ? `<div class="dim lv-sub">${esc(trig(c).slice(0, 90))}</div>` : ""}</div>`;
+  else if (c) head = `<div class="lv"><div class="dim" style="font-size:11.5px">마지막 작업</div><div class="lv-t"><b title="${esc(trig(c))}">조사 #${c.id} · ${esc(trig(c))}</b></div>
+      <div class="mono dim" style="font-size:11.5px">${esc(hms(c.started))} · ${c.steps || 0}단계 · ${c.elapsed_sec || 0}초 · 모델 호출 ${(c.tokens || {}).calls || 0}회 · ${esc((CASE_ST[c.status] || [c.status])[0])}</div></div>`;
+  else head = `<div class="empty">작업 기록 없음</div>`;
+  const step = (time, name, devName, extra, cls) => `<li${cls ? ` class="${cls}"` : ""}><span class="dot"></span><div><span class="mono tt">${esc(hms(time))}</span> <span class="mono tn">${esc(name)}</span>${devName ? ` <span class="mono dim">[${esc(devName)}]</span>` : ""}<div>${esc(TOOL_KO[name] || name)}${extra}</div></div></li>`;
+  const li = (c ? (c.tools || []).slice(-8) : []).map(t => step(t.time, t.name, t.device, t.error ? ` <span class="st crit">오류</span>` : "")).join("") +
+    (running ? step(running.time, running.tool, dev, " 실행 중", "run") : "");
+  put("#live", head + (li ? `<ol class="steps">${li}</ol>` : ""));
+}
+// 네트워크 요약도: 카드·선은 수평/수직 배치, 상태는 /api/state로 색만 바꾼다
+const MT_N = {ISP1:[162,20,"WAN"], ISP2:[330,20,"WAN2"], FW:[246,120,""], WEB:[414,120,"DMZ"], SW1:[246,220,"업링크"],
+  CORE1:[162,320,""], CORE2:[330,320,""], BRANCH:[498,320,""], ASW1:[162,420,""], ASW2:[330,420,""], SRV:[498,420,"DB"]};
+const MT_L = [[216,56,216,88,["ISP1","FW"]],[384,56,384,88,["ISP2","FW"]],[216,88,384,88,["ISP1","ISP2","FW"]],[300,88,300,120,["ISP1","FW"]],
+  [354,138,414,138,["FW","WEB"]],[300,156,300,220,["FW","SW1"]],[300,256,300,288,["SW1"]],[216,288,384,288,["SW1"]],
+  [216,288,216,320,["SW1","CORE1"]],[384,288,384,320,["SW1","CORE2"]],[270,338,330,338,["CORE1","CORE2"],4],[438,338,498,338,["CORE2","BRANCH"]],
+  [216,356,216,420,["CORE1","ASW1"]],[384,356,384,420,["CORE2","ASW2"]],[216,388,384,388,["CORE1","CORE2","ASW1","ASW2"]],[438,438,498,438,["ASW2","SRV"]]];
+function buildMiniTopo(){
+  const L = MT_L.map(([x1, y1, x2, y2, , w], i) => `<line id="ml${i}" class="ml" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"${w ? ` style="stroke-width:${w}"` : ""}/>`).join("");
+  const N = Object.entries(MT_N).map(([n, [x, y, sub]]) => `<g id="mn-${n}" class="mn na"${MON.includes(n) ? ` data-dev="${n}"` : ""} transform="translate(${x} ${y})"><title id="mt-${n}">${n}</title><rect width="108" height="36" rx="3"/>` +
+    (MON.includes(n) ? `<rect class="sq" x="11" y="14.5" width="7" height="7"/><text x="26" y="22.5">${n}</text>` : `<text x="11" y="22.5">${n}<tspan class="sub" dx="6">${sub}</tspan></text>`) + `</g>`).join("");
+  $("#mtopo").innerHTML = L + N + `<text class="mnote" x="300" y="326" text-anchor="middle">HSRP</text><text class="mh" id="mh1" x="20" y="330"></text><text class="mh" id="mh2" x="20" y="376"></text><text class="mnote" x="498" y="306">OSPF 이중 연결</text>`;
+}
+function renderMiniTopo(){
+  const s = S.status || {}, dev = s.devices || {}, groups = Object.entries(s.hsrp || {});
+  const st = n => !MON.includes(n) ? "na" : !dev[n] ? "unk" : dev[n].up ? "ok" : "bad";
+  const atk = threatRows().some(r => r.web && !r.blocked);
+  for (const n in MT_N){
+    const cls = "mn " + st(n) + (n === "WEB" && atk ? " atk" : "") + (MON.includes(n) ? " mon" : ""), g = $("#mn-" + n);
+    if (g.getAttribute("class") !== cls) g.setAttribute("class", cls);
+    const x = dev[n];
+    $("#mt-" + n).textContent = !MON.includes(n) ? `${n}: 미감시${n === "WEB" && atk ? " · 공격 대상" : ""}` : !x ? `${n}: 확인 전` : `${n}: ${x.up ? "정상" : "무응답 - " + (x.error || "")}`;
+  }
+  MT_L.forEach(([, , , , ds], i) => { const ss = ds.map(st), e = $("#ml" + i);
+    const cls = "ml" + (ss.includes("bad") ? " down" : ss.every(v => v === "ok") ? " live" : "");
+    if (e.getAttribute("class") !== cls) e.setAttribute("class", cls); });
+  for (const [c, id] of [["CORE1", "#mh1"], ["CORE2", "#mh2"]]){
+    const act = groups.filter(([, v]) => v.active === c).map(([, v]) => String(v.interface).replace(/^Vl/i, "VL").replace(/^Fa\d+\/\d+\.(\d+)$/, "VL$1"));
+    put(id, act.length ? `<tspan x="20" dy="0">${c} ACTIVE</tspan><tspan x="20" dy="15">${esc(act.join(" · "))}</tspan>` : "");
+  }
+  const up = MON.filter(n => dev[n] && dev[n].up).length, hsBad = groups.some(([, v]) => v.active === "없음" || v.active === "둘 다");
+  put("#net-meta", `감시 ${up}/${MON.length} 응답 · HSRP ${groups.length ? (hsBad ? "이상" : "정상") : "수집 중"}`);
+}
+function renderTrend(){
+  if (!OV) return;
+  const hr = +((S.now || "").slice(11, 13)) || new Date().getHours(), m = {};
+  OV.alerts_today_hourly.forEach(r => m[r.h] = r.n);
+  const vals = Array.from({length: hr + 1}, (_, h) => m[h] || 0), max = Math.max(4, ...vals), total = vals.reduce((a, b) => a + b, 0);
+  const W = 480, base = 130, X = h => hr ? h * W / hr : W / 2, Y = v => base - v / max * 110, pts = vals.map((v, h) => [X(h), Y(v)]);
+  const line = pts.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+  const area = `M0,${base} ` + pts.map(p => `L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ") + ` L${W},${base} Z`;
+  const e = pts[pts.length - 1], peak = vals.indexOf(Math.max(...vals)), hh = n => String(n).padStart(2, "0");
+  put("#tr-meta", `00–${hh(hr)}시 · ${total}건`);
+  put("#trend", `<svg class="trend" viewBox="0 0 ${W} 150" role="img" aria-label="오늘 시간대별 경보 ${total}건${total ? `, 가장 많은 시간 ${peak}시 ${vals[peak]}건` : ""}">
+    <line x1="0" y1="20" x2="${W}" y2="20" class="g"/><line x1="0" y1="75" x2="${W}" y2="75" class="g"/><line x1="0" y1="${base}" x2="${W}" y2="${base}" class="b"/>
+    <path d="${area}" class="a"/><polyline points="${line}" class="l"/><circle cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="4" class="e"/></svg>
+    <div class="mono dim axis"><span>00</span><span>${hh(Math.round(hr / 2))}</span><span>${hh(hr)}시</span></div>
+    <div class="dim" style="font-size:11.5px;margin-top:6px">눈금 0 · ${max / 2} · ${max}건${total ? ` · 가장 많은 시간 ${hh(peak)}시 ${vals[peak]}건` : ""}</div>`);
+}
+function renderFunnel(){
+  if (!OV) return;
+  const f = OV.funnel, max = Math.max(1, f.alerts);
+  const rows = [["경보", f.alerts, ""], ["조사", f.incidents, ""], ["도구 사용", f.tooled, ""], ["조치 제안", f.proposed, "high"], ["승인·적용", f.approved, "ok"]];
+  put("#funnel", `<div class="bars2">` + rows.map(([l, n, c]) => `<div class="b2"><span>${l}</span><span class="tr"><span class="fl ${c}" style="width:${n ? Math.max(1.5, n / max * 100) : 0}%"></span></span><span class="mono num">${n}</span></div>`).join("") +
+    `</div><div class="dim" style="font-size:11.5px;margin-top:8px">${f.approved ? `승인된 조치 ${f.approved}건` : "사람이 승인하기 전에는 아무것도 적용되지 않았습니다."}</div>`);
+}
+function renderByDev(){
+  if (!OV) return;
+  const r = OV.by_device, max = Math.max(1, ...r.map(x => x.n));
+  put("#bydev-meta", `${r.reduce((a, b) => a + b.n, 0)}건`);
+  put("#bydev", r.length ? `<div class="bars2">` + r.map(x => `<div class="b2"><span class="mono">${esc(x.device)}</span><span class="tr"><span class="fl" style="width:${x.n / max * 100}%"></span></span><span class="mono num">${x.n}</span></div>`).join("") + `</div>` : `<div class="empty">기록 없음</div>`);
+}
+function renderOverview(){
+  put("#ov-asof", S.now ? S.now.slice(0, 16) : "");
+  renderOvKpis(); renderLive(); renderMiniTopo(); renderTrend(); renderFunnel(); renderByDev();
+  const items = decisionItems();
+  put("#ovdq-meta", items.length ? `${items.length}건` : "");
+  put("#ovdq", dqHtml(items.slice(0, 4), false) + (items.length > 4 ? `<div class="pb"><a href="#" data-go="decide">결정 대기 전체 ${items.length}건</a></div>` : ""));
+}
+
 // ---- 에이전트 패널
 let lastChat = -1, stickBottom = true, chatLen = 0, seenChat = 0;
 $("#chat").addEventListener("scroll", e => { const c = e.target; stickBottom = c.scrollHeight - c.scrollTop - c.clientHeight < 60; });
@@ -762,7 +966,7 @@ function showView(v){
   $$(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
   if (v === "insights" && Date.now() - insLoaded > 60e3) loadInsights();     // 열 때 1분 넘은 결과면 다시 계산
   if (v === "analytics" && Date.now() - anLoaded > 60e3) loadAnalytics();
-  try { localStorage.setItem("secops.view", v); } catch (e) {}
+  try { localStorage.setItem("secops.view3", v); } catch (e) {}
 }
 
 // ---- 클릭 위임: 화면 이동, 조사 열기, 에이전트 요청, 장비 선택, 승인
@@ -855,16 +1059,17 @@ async function refresh(){
   setn("#n-decide", items.length, true);
   setn("#n-cases", (d.cases || []).filter(c => OPEN_ST.includes(c.status)).length);
   renderChat(d.chat || []);
-  for (const f of [renderBrief, renderDecide, renderCases, renderThreats, renderBlocks, renderInfra, renderAlerts, renderLog, renderKisa]){
+  for (const f of [renderOverview, renderBrief, renderDecide, renderCases, renderThreats, renderBlocks, renderInfra, renderAlerts, renderLog, renderKisa]){
     try { f(); } catch (err) { console.error(f.name, err); }
   }
 }
 
-buildTopo();
+buildTopo(); buildMiniTopo();
 try { if (localStorage.getItem("secops.agent") === "0") setAgent(false); } catch (e) {}
 try { if (localStorage.getItem("secops.nav") === "0") setNav(false); } catch (e) {}
-try { const v = localStorage.getItem("secops.view"); if (v && $("#v-" + v)) showView(v); } catch (e) {}
+try { const v = localStorage.getItem("secops.view3"); if (v && $("#v-" + v)) showView(v); } catch (e) {}
 refresh(); setInterval(refresh, 2000);
+loadOverview(); setInterval(loadOverview, 60000);   // 추세·처리 단계는 1분마다 다시 계산
 </script>
 </body>
 </html>

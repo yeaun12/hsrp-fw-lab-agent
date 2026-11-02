@@ -64,8 +64,13 @@ button{cursor:pointer}
 .btn .cnt:empty{display:none}
 
 /* 셸 */
-.shell{flex:1;min-height:0;display:grid;grid-template-columns:188px minmax(0,1fr) 380px}
-.shell.noagent{grid-template-columns:188px minmax(0,1fr)}.shell.noagent .agentpane{display:none}
+.shell{--navw:188px;--agw:380px;flex:1;min-height:0;display:grid;grid-template-columns:var(--navw) minmax(0,1fr) var(--agw)}
+.shell>.nav{grid-column:1}.shell>.main{grid-column:2}.shell>.agentpane{grid-column:3}
+.shell.nonav{--navw:0px}.shell.nonav>.nav{display:none}
+.shell.noagent{--agw:0px}.shell.noagent>.agentpane{display:none}
+.navbtn{display:grid;place-items:center;width:44px;border:0;border-right:1px solid var(--rule);background:none;color:var(--fg-2);flex:0 0 auto}
+.navbtn:hover{background:var(--surface-2);color:var(--fg)}
+.navbtn svg{width:18px;height:18px}
 
 /* 내비 */
 .nav{border-right:1px solid var(--rule);background:var(--surface);overflow:auto;padding:6px 0 16px}
@@ -84,7 +89,7 @@ button{cursor:pointer}
 .vh h1{font-size:17px;font-weight:650;margin:0;letter-spacing:-.01em}
 .vh p{margin:2px 0 0;color:var(--fg-2);font-size:12.5px;max-width:72ch}
 .vh .act{margin-left:auto;display:flex;gap:6px;align-items:center}
-.pn{background:var(--surface);border:1px solid var(--rule);border-radius:4px;min-width:0}
+.pn{background:var(--surface);border:1px solid var(--rule);border-radius:4px;min-width:0;overflow-x:auto}
 .pn>header{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--rule);min-height:36px}
 .pn>header h2{margin:0;font-size:12px;font-weight:650}
 .pn>header .meta{margin-left:auto;font-size:11.5px;color:var(--fg-3);display:flex;gap:8px;align-items:center;white-space:nowrap}
@@ -242,6 +247,9 @@ dialog input,dialog select{width:100%;padding:7px 9px;margin:6px 0;border:1px so
 </head>
 <body>
 <div class="top">
+  <button class="navbtn" id="navbtn" aria-controls="nav" aria-expanded="true" aria-label="메뉴 접기" title="메뉴 접기/펼치기 (Ctrl+B)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
   <div class="brand"><b>랩컴퍼니 보안운영</b></div>
   <div class="seg" title="자동 감시가 마지막으로 장비 상태를 수집한 시각"><span class="led" id="monled"></span>감시 <b class="mono" id="monat">-</b></div>
   <div class="seg" title="에이전트 작업 상태"><span class="led" id="busyled"></span><span id="busy">대기</span></div>
@@ -255,9 +263,9 @@ dialog input,dialog select{width:100%;padding:7px 9px;margin:6px 0;border:1px so
 </div>
 
 <div class="shell" id="shell">
-  <nav class="nav" aria-label="섹션">
+  <nav class="nav" id="nav" aria-label="주 메뉴">
     <h6>개요</h6>
-    <button data-view="brief" class="on">브리핑</button>
+    <button data-view="brief" class="on" aria-current="page">브리핑</button>
     <h6>대응</h6>
     <button data-view="decide">결정 대기<span class="n" id="n-decide"></span></button>
     <button data-view="cases">조사 기록<span class="n" id="n-cases"></span></button>
@@ -750,7 +758,7 @@ async function askAgent(text){ setAgent(true); stickBottom = true; await post("/
 
 // ---- 화면 전환
 function showView(v){
-  $$(".nav button[data-view]").forEach(b => b.classList.toggle("on", b.dataset.view === v));
+  $$(".nav button[data-view]").forEach(b => { const on = b.dataset.view === v; b.classList.toggle("on", on); on ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"); });
   $$(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
   if (v === "insights" && Date.now() - insLoaded > 60e3) loadInsights();     // 열 때 1분 넘은 결과면 다시 계산
   if (v === "analytics" && Date.now() - anLoaded > 60e3) loadAnalytics();
@@ -801,6 +809,15 @@ async function openAudit(id){
 }
 $("#auditrule").onclick = async () => { const r = await post("/api/audit/run", {}); if (r.error) alert(r.error); refresh(); };
 $("#agentbtn").onclick = () => setAgent(agentHidden());
+// 메뉴 접기: ☰ 버튼 또는 Ctrl+B. 상태는 다음 방문에도 유지한다.
+function setNav(show){
+  $("#shell").classList.toggle("nonav", !show);
+  $("#navbtn").setAttribute("aria-expanded", String(show));
+  $("#navbtn").setAttribute("aria-label", show ? "메뉴 접기" : "메뉴 펼치기");
+  try { localStorage.setItem("secops.nav", show ? "1" : "0"); } catch (e) {}
+}
+$("#navbtn").onclick = () => setNav($("#shell").classList.contains("nonav"));
+document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "b"){ e.preventDefault(); $("#navbtn").click(); } });
 $("#ask").addEventListener("submit", async e => { e.preventDefault(); const t = $("#q").value.trim(); if (!t) return; $("#q").value = ""; stickBottom = true; await post("/api/chat", {text:t}); refresh(); });
 $("#resetbtn").onclick = async () => {
   if (!confirm("새 대화를 시작할까요? 지금까지의 대화는 보관되고, 에이전트는 이전 내용을 기억하지 않습니다.")) return;
@@ -845,6 +862,7 @@ async function refresh(){
 
 buildTopo();
 try { if (localStorage.getItem("secops.agent") === "0") setAgent(false); } catch (e) {}
+try { if (localStorage.getItem("secops.nav") === "0") setNav(false); } catch (e) {}
 try { const v = localStorage.getItem("secops.view"); if (v && $("#v-" + v)) showView(v); } catch (e) {}
 refresh(); setInterval(refresh, 2000);
 </script>

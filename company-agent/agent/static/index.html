@@ -42,13 +42,23 @@ header{display:flex;align-items:center;gap:16px;padding:12px 22px;border-bottom:
 #opsum{font-weight:600;border:1px solid var(--line)}
 #opsum.ok{border-color:transparent}#opsum.bad{border-color:transparent}
 .spacer{flex:1}
-main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;padding:16px 22px}
-@media (max-width:900px){body{height:auto}main{grid-template-columns:1fr;padding:14px}}
+main{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1.25fr) minmax(0,1fr);gap:16px;padding:16px 22px}
+@media (max-width:900px){body{height:auto}main{grid-template-columns:1fr;padding:14px}.rail{flex-direction:row;flex-wrap:wrap;gap:6px}.navitem{flex:0 0 auto}.chatpanel{min-height:58vh}.views{min-height:52vh}}
+.rail{display:flex;flex-direction:column;gap:4px;min-width:0}
+.navitem{display:flex;align-items:center;gap:8px;background:transparent;color:var(--muted);border:1px solid transparent;border-radius:8px;padding:9px 12px;font-size:12.5px;font-weight:500;white-space:nowrap;text-align:left;box-shadow:none;transition:background .12s,color .12s}
+.navitem:hover{background:var(--chip);color:var(--ink);filter:none}
+.navitem.active{background:var(--accent-weak);color:var(--accent);font-weight:600}
+.navitem .nb{margin-left:auto;background:var(--bad);color:#fff;border-radius:999px;font-size:10px;line-height:1.6;padding:0 6px;min-width:16px;text-align:center}
+.navitem .nb:empty{display:none}
+.views{display:flex;min-height:0}
+.view{flex:1;min-height:0;width:100%}
+.views .view{display:none}
+.views .view.active{display:flex}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;min-height:0;box-shadow:var(--shadow);overflow:hidden}
 .panel h2{font-size:12px;font-weight:600;letter-spacing:.015em;margin:0;padding:12px 16px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:9px;background:var(--panel2)}
 .panel h2::before{content:"";width:3px;align-self:stretch;min-height:13px;border-radius:2px;background:var(--accent);flex:0 0 auto}
 .panel h2 .count{color:var(--muted);font-weight:500;font-size:11px;background:var(--chip);padding:2px 8px;border-radius:999px}
-.col{display:flex;flex-direction:column;gap:16px;min-height:0;overflow:auto;padding-right:2px}
+.view>.body{flex:1;min-height:0;max-height:none}
 #chat{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
 .msg{max-width:88%;padding:10px 13px;border-radius:11px;white-space:normal;word-break:break-word;line-height:1.55;box-shadow:0 1px 2px rgba(16,24,40,.04)}
 .msg.admin{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
@@ -74,7 +84,6 @@ button:disabled{opacity:.5;cursor:default;filter:none}
 .suggest button{background:var(--chip);color:var(--muted);font-size:12px;padding:6px 12px;box-shadow:none;border:1px solid var(--line)}
 .suggest button:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-weak);transform:none}
 .body{padding:12px 16px;overflow:auto}
-.col>.panel{flex:0 0 auto}.col>.panel>.body{min-height:72px;max-height:320px}
 table.grid{width:100%;border-collapse:collapse;font-size:12.5px}table.grid th,table.grid td{padding:7px 8px;border-bottom:1px solid var(--line2);text-align:left}
 table.grid tr:last-child td{border-bottom:0}
 table.grid th{color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em}
@@ -129,7 +138,17 @@ details.case pre{white-space:pre-wrap;background:var(--code);padding:7px;border-
   <button class="ghost" id="keybtn">API 키 설정</button>
 </header>
 <main>
-  <section class="panel">
+  <nav class="rail">
+    <button class="navitem active" data-view="cases">조사 기록<span class="nb" id="nb-cases"></span></button>
+    <button class="navitem" data-view="analytics">운영 분석</button>
+    <button class="navitem" data-view="approvals">승인 대기<span class="nb" id="nb-appr"></span></button>
+    <button class="navitem" data-view="audits">보안 점검</button>
+    <button class="navitem" data-view="web">웹 공격 탐지</button>
+    <button class="navitem" data-view="infra">인프라 상태</button>
+    <button class="navitem" data-view="alerts">감시 경보<span class="nb" id="nb-alert"></span></button>
+    <button class="navitem" data-view="audit">감사 로그</button>
+  </nav>
+  <section class="panel chatpanel">
     <h2>에이전트와 대화 <span class="spacer"></span><button class="ghost" id="resetbtn" style="font-size:12px;padding:4px 10px">새 대화</button></h2>
     <div id="chat"></div>
     <div class="suggest">
@@ -139,22 +158,22 @@ details.case pre{white-space:pre-wrap;background:var(--code);padding:7px;border-
     </div>
     <form id="ask"><input id="q" placeholder="예: 지사에서 인터넷이 느리다는데 확인해 줄래요?" autocomplete="off"><button>보내기</button></form>
   </section>
-  <div class="col">
-    <section class="panel"><h2>조사 기록 (AI 판단 근거) <span class="count" id="casecount"></span></h2><div class="body" id="cases" style="max-height:380px"></div></section>
-    <section class="panel"><h2>운영 분석 (KPI) <span class="spacer"></span><button class="ghost" id="anbtn" style="font-size:12px;padding:4px 10px">분석 새로고침</button></h2>
-      <div class="body" id="analytics" style="max-height:440px"><div class="empty">"분석 새로고침"을 누르면 저장된 운영 데이터(Phase 5 파이프라인)로 KPI를 계산해 보여줍니다.</div></div></section>
-    <section class="panel"><h2>승인 대기 <span class="count" id="apprcount"></span></h2><div class="body" id="approvals"></div></section>
-    <section class="panel"><h2>보안 점검 (KISA 네트워크 장비) <span class="spacer"></span>
+  <div class="views">
+    <section class="panel view active" data-view="cases"><h2>조사 기록 (AI 판단 근거) <span class="count" id="casecount"></span></h2><div class="body" id="cases"></div></section>
+    <section class="panel view" data-view="analytics"><h2>운영 분석 (KPI) <span class="spacer"></span><button class="ghost" id="anbtn" style="font-size:12px;padding:4px 10px">분석 새로고침</button></h2>
+      <div class="body" id="analytics"><div class="empty">"분석 새로고침"을 누르면 저장된 운영 데이터(Phase 5 파이프라인)로 KPI를 계산해 보여줍니다.</div></div></section>
+    <section class="panel view" data-view="approvals"><h2>승인 대기 <span class="count" id="apprcount"></span></h2><div class="body" id="approvals"></div></section>
+    <section class="panel view" data-view="audits"><h2>보안 점검 (KISA 네트워크 장비) <span class="spacer"></span>
       <button class="ghost" id="auditrule" style="font-size:12px;padding:4px 10px" title="API 키 없이 규칙으로만 판정합니다">규칙 점검</button>
       <button id="auditai" style="font-size:12px;padding:4px 10px" title="에이전트가 점검·판정·보고서·조치 승인 요청까지 진행합니다">AI 점검·보고서</button></h2>
       <div class="body" id="audits"></div></section>
-    <section class="panel"><h2>웹 공격 탐지 (DMZ) <span class="spacer"></span>
+    <section class="panel view" data-view="web"><h2>웹 공격 탐지 (DMZ) <span class="spacer"></span>
       <button class="ghost" id="webscan" style="font-size:12px;padding:4px 10px">로그 분석</button>
       <button id="webai" style="font-size:12px;padding:4px 10px">AI 분석</button></h2>
       <div class="body" id="webattacks"></div></section>
-    <section class="panel"><h2>인프라 상태</h2><div class="body"><div class="devs" id="devices"></div><table class="grid" id="hsrp"></table><table class="grid" id="gws" style="margin-top:8px"></table><div id="blocked" style="margin-top:8px"></div></div></section>
-    <section class="panel"><h2>감시 경보 <span class="count" id="alertcount"></span></h2><div class="body" id="alerts"></div></section>
-    <section class="panel"><h2>감사 로그</h2><div class="body" id="audit" style="max-height:240px"></div></section>
+    <section class="panel view" data-view="infra"><h2>인프라 상태</h2><div class="body"><div class="devs" id="devices"></div><table class="grid" id="hsrp"></table><table class="grid" id="gws" style="margin-top:8px"></table><div id="blocked" style="margin-top:8px"></div></div></section>
+    <section class="panel view" data-view="alerts"><h2>감시 경보 <span class="count" id="alertcount"></span></h2><div class="body" id="alerts"></div></section>
+    <section class="panel view" data-view="audit"><h2>감사 로그</h2><div class="body" id="audit"></div></section>
   </div>
 </main>
 <dialog id="webdlg" style="max-width:900px;width:92vw">
@@ -262,6 +281,7 @@ async function refresh(){
     const _warn = (_up < _names.length) || _open || _pend || _sec;
     $("#opsum").innerHTML = `장비 ${_up}/${_names.length} · 미해결 ${_open} · 승인대기 ${_pend} · 긴급경보 ${_sec}`;
     $("#opsum").className = "chip" + (_warn ? " bad" : " ok");
+    setnb("#nb-cases", _open); setnb("#nb-appr", _pend); setnb("#nb-alert", d.alerts.length);
   } catch(e) { $("#poll").textContent = "에이전트 서버 연결 끊김"; }
 }
 let caseOpen = {};
@@ -393,6 +413,14 @@ async function loadAnalytics(){
   finally { $("#anbtn").disabled = false; }
 }
 $("#anbtn").onclick = loadAnalytics;
+function setnb(sel, n){ const e = $(sel); if (e) e.textContent = n > 0 ? n : ""; }
+function showView(v){
+  document.querySelectorAll(".navitem").forEach(b => b.classList.toggle("active", b.dataset.view === v));
+  document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.dataset.view === v));
+  try { localStorage.setItem("dashview", v); } catch(e) {}
+}
+document.querySelectorAll(".navitem").forEach(b => b.onclick = () => showView(b.dataset.view));
+try { const v = localStorage.getItem("dashview"); if (v && document.querySelector(`.navitem[data-view="${v}"]`)) showView(v); } catch(e) {}
 refresh(); setInterval(refresh, 2000);
 </script>
 </body>

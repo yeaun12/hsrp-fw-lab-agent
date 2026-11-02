@@ -99,6 +99,10 @@ class Handler(BaseHTTPRequestHandler):
                 snap["usage"] = dict(brain.usage)
             snap["audits"] = audit.list_audits()[:3]
             snap["audit_running"] = _audit_running.is_set()
+            snap["inventory"] = {n: {"host": d["host"], "role": d["role"], "type": d["type"]}
+                                 for n, d in config.DEVICES.items()}
+            snap["scan_min_ports"] = config.SCAN_MIN_PORTS
+            snap["scan_window_sec"] = config.SCAN_WINDOW_SEC
             self._json(snap)
         elif self.path == "/api/analytics":
             try:
@@ -110,6 +114,25 @@ class Handler(BaseHTTPRequestHandler):
                 conn.close()
                 k["ingest"] = stats
                 self._json(k)
+            except Exception as e:
+                self._json({"error": f"{type(e).__name__}: {e}"}, 500)
+        elif self.path == "/api/insights":
+            # Phase 8 통계 이상 탐지 + 이벤트 상관분석을 대시보드에 노출한다(최신 로그를 멱등 적재 후 재계산).
+            try:
+                import warehouse
+                import anomaly
+                import correlate
+                db = os.path.join(config.DATA_DIR, "ops_dw.sqlite")
+                conn, _ = warehouse.ingest(config.DATA_DIR, db)
+                groups = correlate.correlate(conn)
+                basis = {r["group_id"]: r["verified_basis"] for r in
+                         conn.execute("SELECT group_id, verified_basis FROM correlation_groups")}
+                out = {"readiness": anomaly.ml_readiness(conn), "profile": anomaly.data_profile(conn),
+                       "z_threshold": anomaly.Z_THRESHOLD, "anomalies": anomaly.detect(conn),
+                       "window_sec": correlate.WINDOW_SEC,
+                       "groups": [{**g, "verified_basis": basis.get(g["group_id"])} for g in groups][::-1][:20]}
+                conn.close()
+                self._json(out)
             except Exception as e:
                 self._json({"error": f"{type(e).__name__}: {e}"}, 500)
         elif self.path == "/api/webattacks":

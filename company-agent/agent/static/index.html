@@ -89,6 +89,7 @@ button{cursor:pointer}
 .vh h1{font-size:17px;font-weight:650;margin:0;letter-spacing:-.01em}
 .vh p{margin:2px 0 0;color:var(--fg-2);font-size:12.5px;max-width:72ch}
 .vh .act{margin-left:auto;display:flex;gap:6px;align-items:center}
+.vh .act select{padding:4px 8px;border:1px solid var(--rule-2);border-radius:3px;background:var(--surface);font-size:12.5px;max-width:160px}
 .pn{background:var(--surface);border:1px solid var(--rule);border-radius:4px;min-width:0;overflow-x:auto}
 .pn>header{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--rule);min-height:36px}
 .pn>header h2{margin:0;font-size:12px;font-weight:650}
@@ -272,6 +273,7 @@ ul.cands{margin:0;padding:0;list-style:none;display:grid;gap:3px}
 .msg.alert{font-size:12px;border:1px solid var(--rule);box-shadow:inset 3px 0 var(--high);padding:6px 9px 6px 12px}
 .msg.approval{font-size:12px;border:1px solid var(--rule);box-shadow:inset 3px 0 var(--accent);padding:6px 9px 6px 12px}
 .msg.system{font-size:11.5px;color:var(--fg-3);text-align:center}
+.rpt{font-size:13px;line-height:1.6;max-height:520px;overflow:auto}.rpt table{border-collapse:collapse;margin:6px 0;font-size:12px;width:100%}.rpt th,.rpt td{border:1px solid var(--rule);padding:4px 8px;text-align:left;vertical-align:top}.rpt th{background:var(--surface-2);font-weight:600}
 .msg table{border-collapse:collapse;margin:6px 0;font-size:12px}.msg th,.msg td{border:1px solid var(--rule);padding:3px 7px;text-align:left}
 .msg code{font-family:var(--font-data);font-size:.92em;background:var(--surface-2);padding:0 3px}
 details.tool{font-family:var(--font-data);font-size:11.5px;color:var(--fg-2);padding-left:12px}
@@ -365,7 +367,9 @@ dialog input,dialog select{width:100%;padding:7px 9px;margin:6px 0;border:1px so
 
     <!-- 브리핑 -->
     <section class="view" id="v-brief">
-      <div class="vh"><h1>브리핑</h1></div>
+      <div class="vh"><h1>브리핑</h1>
+        <div class="act"><select id="rp-sel" aria-label="보고서 선택"></select><button class="btn" id="reportrun" title="보고 에이전트가 지금 일일 보고서를 작성">보고서 지금 작성</button></div></div>
+      <section class="pn"><header><h2>운영 보고서</h2><span class="meta">보고 에이전트 · 숫자는 코드 집계, 문장은 AI</span></header><div class="pb rpt" id="rpt"><div class="empty">불러오는 중</div></div></section>
       <div class="posture" id="posture"></div>
       <div class="g2">
         <section class="pn"><header><h2>결정 필요</h2><span class="meta" id="dq-meta"></span></header><div id="dq-brief"></div></section>
@@ -803,6 +807,22 @@ function renderAgents(){
   put("#drift", head + (body || `<div class="empty">직전 기준과 달라진 설정이 없습니다.</div>`));
 }
 
+// ---- 운영 보고서 (/api/reports): 보고 에이전트가 쓴 일일·주간 보고서
+const RP = {list: [], sel: null, shown: null, loaded: 0};
+async function loadReports(){
+  RP.loaded = Date.now();
+  try { RP.list = (await (await fetch("/api/reports")).json()).reports || []; } catch (e) { return; }
+  const cur = RP.sel && RP.list.some(r => r.name === RP.sel) ? RP.sel : (RP.list[0] || {}).name;
+  put("#rp-sel", RP.list.map(r => `<option value="${esc(r.name)}"${r.name === cur ? " selected" : ""}>${esc((r.created || "").slice(5, 16))} ${r.kind === "weekly" ? "주간" : "일일"}</option>`).join(""));
+  if (!cur) put("#rpt", `<div class="empty">아직 보고서가 없습니다. 매일 08:30에 작성되고, 지금 작성할 수도 있습니다.</div>`);
+  else if (cur !== RP.shown) showReport(cur);
+}
+async function showReport(name){
+  RP.sel = RP.shown = name;
+  let d; try { d = await (await fetch("/api/reports/" + encodeURIComponent(name))).json(); } catch (e) { d = {}; }
+  put("#rpt", d.text ? md(d.text) : `<div class="empty">보고서를 불러오지 못했습니다</div>`);
+}
+
 // ---- 상관·이상 분석 (/api/insights)
 let insLoaded = 0;
 async function loadInsights(){
@@ -1010,6 +1030,7 @@ function showView(v){
   if (v === "insights" && Date.now() - insLoaded > 60e3) loadInsights();     // 열 때 1분 넘은 결과면 다시 계산
   if (v === "analytics" && Date.now() - anLoaded > 60e3) loadAnalytics();
   if (v === "agents") loadAgents();
+  if (v === "brief" && Date.now() - RP.loaded > 30e3) loadReports();
   try { localStorage.setItem("secops.view3", v); } catch (e) {}
 }
 
@@ -1056,6 +1077,11 @@ async function openAudit(id){
   $("#auditdlg").showModal();
 }
 $("#driftrun").onclick = async () => { const r = await post("/api/agents/drift/run", {}); if (r.error) alert(r.error); setTimeout(loadAgents, 1500); };
+$("#rp-sel").onchange = e => showReport(e.target.value);
+$("#reportrun").onclick = async () => { const b = $("#reportrun"), r = await post("/api/agents/report/run", {});
+  if (r.error) { alert(r.error); return; }
+  b.disabled = true; b.textContent = "작성 중…"; RP.shown = null; RP.sel = null;
+  setTimeout(() => { b.disabled = false; b.textContent = "보고서 지금 작성"; loadReports(); }, 20000); };
 $("#auditrule").onclick = async () => { const r = await post("/api/audit/run", {}); if (r.error) alert(r.error); refresh(); };
 $("#agentbtn").onclick = () => setAgent(agentHidden());
 // 메뉴 접기: ☰ 버튼 또는 Ctrl+B. 상태는 다음 방문에도 유지한다.
@@ -1105,6 +1131,7 @@ async function refresh(){
   setn("#n-cases", (d.cases || []).filter(c => OPEN_ST.includes(c.status)).length);
   renderChat(d.chat || []);
   if ($("#v-agents").classList.contains("on") && Date.now() - agLoaded > 5000) loadAgents();   // 열려 있을 때만 5초마다
+  if ($("#v-brief").classList.contains("on") && Date.now() - RP.loaded > 60e3) loadReports();
   for (const f of [renderOverview, renderBrief, renderDecide, renderCases, renderThreats, renderBlocks, renderInfra, renderAlerts, renderLog, renderKisa]){
     try { f(); } catch (err) { console.error(f.name, err); }
   }

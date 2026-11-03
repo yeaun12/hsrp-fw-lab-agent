@@ -27,7 +27,7 @@ def ssh(script, stdin=None):
 def main():
     subprocess.run(["scp", "-q", "-r", "-P", "2222", *SSH, os.path.join(HERE, "agent"), "root@127.0.0.1:/opt/lab-agent/app.new"],
                    check=True)
-    for unit in ("lab-agent.service", "lab-drift.service", "lab-drift.timer"):   # 대응 서버 + 변경 감지 에이전트
+    for unit in ("lab-agent.service", "lab-drift.service", "lab-drift.timer", "lab-report.service", "lab-report.timer"):
         subprocess.run(["scp", "-q", "-P", "2222", *SSH, os.path.join(HERE, "deploy", unit),
                         f"root@127.0.0.1:/etc/systemd/system/{unit}"], check=True)
     if "--secrets" in sys.argv:
@@ -41,8 +41,8 @@ def main():
         "/opt/lab-agent/venv/bin/pip install -q --disable-pip-version-check -r /opt/lab-agent/app/requirements.txt; "
         "firewall-cmd -q --add-port=8080/tcp --permanent; firewall-cmd -q --reload; "
         "systemctl daemon-reload; systemctl enable -q lab-agent; systemctl restart lab-agent; "
-        "systemctl enable -q --now lab-drift.timer; sleep 2; "
-        "systemctl is-active lab-agent lab-drift.timer")
+        "systemctl enable -q --now lab-drift.timer lab-report.timer; sleep 2; "
+        "systemctl is-active lab-agent lab-drift.timer lab-report.timer")
 
 
 if __name__ == "__main__":

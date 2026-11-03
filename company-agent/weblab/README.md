@@ -27,6 +27,10 @@ kali(198.51.100.66) ──80──> WEB(211.0.1.10) 테스트 포털  → /var/l
 
 ## 시연
 - kali(hacker1)에서 `python3 /tmp/gen_traffic.py http://211.0.1.10` 실행 → 정상 요청 사이에 공격 시그니처가 섞여 들어갑니다.
+  `/tmp`는 재부팅하면 비워지므로, 파일이 없으면 curl로 같은 공격을 보냅니다:
+  ```
+  for q in "' OR '1'='1" "' UNION SELECT user, pass FROM users --" "<script>alert(1)</script>"; do curl -s -o /dev/null -w "%{http_code} " -G http://211.0.1.10/search --data-urlencode "q=$q"; sleep 1; done; curl -s -o /dev/null -w "%{http_code}\n" http://211.0.1.10/login --data-urlencode "user=admin' --" -d pw=x
+  ```
 - 대시보드 **웹 공격 탐지(DMZ)** 패널에 출발지·시도 건수·성공 추정이 뜨고, 자동 경보가 올라옵니다(규칙만, API 키 불필요).
 - **AI 분석** 버튼(키 필요)을 누르면 에이전트가 성공 여부를 판정하고, 앞선 포트 스캔과 엮어 하나의 사건으로 보고하며, 차단 승인과 **웹 앱 수정 필요**를 분리해 안내합니다.
 

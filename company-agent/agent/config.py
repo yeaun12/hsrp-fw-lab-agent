@@ -49,6 +49,7 @@ LISTEN_PORT = 8080
 POLL_FIREWALL_SEC = 10
 POLL_NETWORK_SEC = 20
 SCAN_WINDOW_SEC = 120
+WEB_WINDOW_SEC = 300          # 웹 공격 경보는 최근 이 시간 안의 요청만 센다(예전 로그 재경보 방지)
 SCAN_MIN_PORTS = 8            # 한 출발지가 창 안에서 막힌 서로 다른 목적지 포트 수
 
 # 관리 대상 장비. host는 관리망(VLAN40)에서 접근하는 주소.

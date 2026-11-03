@@ -37,6 +37,7 @@ def main():
         print("장비 관리 계정 저장 완료")
     ssh("set -e; rm -rf /opt/lab-agent/app; mv /opt/lab-agent/app.new /opt/lab-agent/app; "
         "mkdir -p /opt/lab-agent/data; chmod 700 /opt/lab-agent/secrets 2>/dev/null || true; "
+        "/opt/lab-agent/venv/bin/pip install -q --disable-pip-version-check -r /opt/lab-agent/app/requirements.txt; "
         "firewall-cmd -q --add-port=8080/tcp --permanent; firewall-cmd -q --reload; "
         "systemctl daemon-reload; systemctl enable -q lab-agent; systemctl restart lab-agent; sleep 2; "
         "systemctl is-active lab-agent")

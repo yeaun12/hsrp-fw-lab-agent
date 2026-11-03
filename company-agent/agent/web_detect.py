@@ -6,6 +6,7 @@ DMZ 웹 서버의 접속 로그를 SSH로 가져와, SQL 인젝션·XSS 시그�
 
 메인 에이전트와 같은 프로세스에서 돌지만 도구·지침이 분리돼 있어, 나중에 별도 분석 에이전트로 떼기 쉽다.
 """
+import datetime
 import json
 import re
 import subprocess
@@ -20,7 +21,7 @@ INTERNAL = re.compile(r"^(10\.|211\.0\.1\.)")   # 내부·DMZ 자체 트래픽�
 # 공격 시그니처 (디코딩한 문자열에 대해 매칭)
 SIGNATURES = [
     ("SQLi", "union-select", re.compile(r"union\s+select", re.I)),
-    ("SQLi", "or-tautology", re.compile(r"('|\b)or\b.{0,6}?(\d+\s*=\s*\d+|'[^']*'\s*=\s*'[^']*')", re.I)),
+    ("SQLi", "or-tautology", re.compile(r"('|\b)or\b.{0,6}?(\d+\s*=\s*\d+|'[^']*'\s*=\s*'[^']*'?)", re.I)),  # 끝 따옴표는 앱 쿼리가 닫아 줌
     ("SQLi", "comment", re.compile(r"(--|#|/\*)")),
     ("SQLi", "stacked-query", re.compile(r";\s*(drop|delete|update|insert|alter)\b", re.I)),
     ("SQLi", "sleep-benchmark", re.compile(r"\b(sleep|benchmark|pg_sleep|waitfor\s+delay)\s*\(", re.I)),
@@ -72,9 +73,13 @@ def _success_hint(rec, sigs):
     return ""
 
 
-def scan(lines=400, window_only_attacks=True):
-    """로그를 가져와 출발지별 공격 시도를 요약한다."""
+def scan(lines=400, window_only_attacks=True, since_sec=None):
+    """로그를 가져와 출발지별 공격 시도를 요약한다.
+
+    since_sec를 주면 최근 그 시간 안의 요청만 센다(감시 경보용). 주지 않으면 가져온 로그 전체를 센다
+    (대시보드의 공격 출발지 이력). 시각은 WEB 로그의 ts(현지 시각)와 이 PC 시각을 비교한다."""
     raw = _ssh_tail(lines)
+    cutoff = (datetime.datetime.now() - datetime.timedelta(seconds=since_sec)).isoformat(timespec="seconds")         if since_sec else None
     by_src = {}
     for line in raw.splitlines():
         line = line.strip()
@@ -85,6 +90,8 @@ def scan(lines=400, window_only_attacks=True):
         except ValueError:
             continue
         if INTERNAL.match(rec.get("ip", "")):
+            continue
+        if cutoff and rec.get("ts", "") < cutoff:   # 같은 형식(YYYY-MM-DDTHH:MM:SS)이라 문자열 비교로 충분
             continue
         sigs = match_signatures(rec.get("query", "")) + match_signatures(rec.get("body", ""))
         # 중복 시그니처 제거

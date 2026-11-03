@@ -107,6 +107,29 @@ def fw_ssh_ready(timeout=600):
     return False
 
 
+def fw_detach_serial():
+    """FW 시리얼 콘솔 파이프를 뗀다. 파이프가 막힌 상태에선 VBoxManage changeuartmode1 자체도 멈추므로
+    (2026-11-03 실측) GNS3 콘솔(telnet)을 읽어 파이프를 비우는 동안 명령을 실행한다."""
+    stop = time.time() + 120
+    try:
+        s = socket.create_connection(("localhost", nodes()["FW"]["console"]), timeout=1)
+    except OSError:
+        s = None
+    p = subprocess.Popen([VBOX, "controlvm", "FW", "changeuartmode1", "disconnected"])
+    while p.poll() is None and time.time() < stop:
+        try:
+            if not s or not s.recv(65536):   # 콘솔이 닫히면 더 읽지 않는다
+                time.sleep(0.5)
+        except OSError:
+            time.sleep(0.2)
+    if s:
+        s.close()
+    if p.poll() is None:
+        p.kill()
+        return False
+    return p.returncode == 0
+
+
 def step(msg):
     print(f"\n== {msg}", flush=True)
 
@@ -174,7 +197,7 @@ def main():
     if not booted:
         # 부팅이 시리얼 출력에서 멈춘 경우: 콘솔 파이프를 떼고 VM만 리셋한다(GNS3 reload는 파이프를 다시 붙인다).
         print("FW 부팅이 멈춘 것으로 보여 시리얼 콘솔을 분리하고 재시작합니다.")
-        subprocess.run([VBOX, "controlvm", "FW", "changeuartmode1", "disconnected"], check=True)
+        print("시리얼 콘솔 분리:", fw_detach_serial())
         subprocess.run([VBOX, "controlvm", "FW", "reset"], check=True)
         booted = fw_ssh_ready()
     print("FW 부팅 완료:", booted)

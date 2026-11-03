@@ -78,7 +78,7 @@ def _poll_firewall():
 
 def _poll_webattacks():
     try:
-        rows = web_detect.scan(lines=300)
+        rows = web_detect.scan(lines=300, since_sec=config.WEB_WINDOW_SEC)  # 지난 로그로 경보가 다시 뜨지 않게
     except Exception as e:                 # WEB 로그 수집 실패는 조용히 넘긴다(웹 앱이 없을 수도 있음)
         state.log_audit("monitor", "error", f"webattack: {type(e).__name__}: {e}")
         return

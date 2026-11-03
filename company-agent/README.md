@@ -59,7 +59,7 @@ GNS3에서 ADMIN-PC 콘솔을 열고 로그인하면, 대시보드(`http://10.0.
 | # | 시나리오 | 하는 방법 | 기대 결과 |
 |---|---|---|---|
 | 1 | 헬프데스크 진단 | 오른쪽 **에이전트** 패널에 "영업팀(VLAN20) PC가 DB 서버에 접속이 안 된대요" 입력 | 에이전트가 경로·HSRP·서버팜 ACL을 조회하고 "VLAN20→서버팜은 정책상 차단"이라고 근거와 함께 설명 |
-| 2 | 공격 탐지·차단 | kali(ATTACKER)에서 `sudo nmap -Pn --top-ports 40 211.0.1.10 211.0.0.2` | 감시 경보 → 에이전트가 방화벽 로그를 분석하고 차단 승인 요청 → **결정 대기**에서 **승인** → pfSense에 차단 적용 → 에이전트가 검증 보고. kali에서 `curl http://211.0.1.10`이 막힘 |
+| 2 | 공격 탐지·차단 | kali(ATTACKER)에서 `sudo nmap -n -Pn --top-ports 40 211.0.1.10 211.0.0.2` (`-n`: 랩에 DNS가 없어 이름 조회에서 멈추지 않게) | 감시 경보 → 에이전트가 방화벽 로그를 분석하고 차단 승인 요청 → **결정 대기**에서 **승인** → pfSense에 차단 적용 → 에이전트가 검증 보고. kali에서 `curl http://211.0.1.10`이 막힘 |
 | 3 | 장애 감지·보고 | GNS3에서 CORE1 정지 | HSRP 전환 경보(묶음 1건) + 약 45초 뒤 CORE1 장애 경보 → 에이전트가 영향 범위와 현재 우회 경로 보고. CORE1을 켜면 복구·원위치 경보 |
 
 시나리오 2 시연 후에는 대화로 "198.51.100.66 차단 해제해 줘"라고 요청하면 해제 승인 요청을 만듭니다.
@@ -83,7 +83,7 @@ GNS3에서 ADMIN-PC 콘솔을 열고 로그인하면, 대시보드(`http://10.0.
 
 DMZ 웹 서버의 접속 로그를 분석해 외부 공격자의 SQL 인젝션·XSS 시도를 탐지하고, 앱 응답으로 성공 여부를 추정합니다. "규칙 탐지 + AI 판정" 구조는 보안 점검과 같고, 로그 분석은 별도 모듈(`agent/web_detect.py`)로 분리해 두었습니다.
 
-- 콘솔 **위협 › 공격 출발지** 화면: 방화벽 차단 기록과 웹 공격을 출발지 IP 하나로 묶어 유형·ATT&CK 기법(T1046 포트 스캔, T1190 공개 웹 앱 공격)·근거·성공 흔적·차단 여부를 보여줍니다. 외부 공격이 들어오면 자동 경보도 올라옵니다(규칙만, API 키 불필요).
+- 콘솔 **위협 › 공격 출발지** 화면: 방화벽 차단 기록과 웹 공격을 출발지 IP 하나로 묶어 유형·ATT&CK 기법(T1046 포트 스캔, T1190 공개 웹 앱 공격)·근거·성공 흔적·차단 여부를 보여줍니다. 외부 공격이 들어오면 자동 경보도 올라옵니다(규칙만, API 키 불필요). 경보는 최근 5분(`WEB_WINDOW_SEC`) 안의 요청만 세고, 화면의 이력은 로그 전체를 보여줍니다.
 - 경보를 받은 에이전트(키 필요)는 성공 여부를 판정하고, 앞선 포트 스캔과 사건을 연결하고, 차단 승인을 요청하고, 웹 앱 수정이 필요한 부분을 따로 알립니다.
 - 방화벽 차단은 출발지를 막을 뿐이고, 인젝션·XSS 취약점 자체는 WEB 앱 수정으로 고쳐야 합니다. 에이전트는 이를 분리해서 알립니다.
 - 테스트 포털 설치와 시연 방법: [weblab/README.md](weblab/README.md) (교육용·격리 랩 전용).
@@ -106,7 +106,7 @@ DMZ 웹 서버의 접속 로그를 분석해 외부 공격자의 SQL 인젝션·
 
 | 경로 | 내용 |
 |---|---|
-| `agent/server.py` | 진입점. 콘솔과 API(`/api/state`, `/api/chat`, `/api/approve`, `/api/reject`, `/api/apikey`, `/api/overview`, `/api/analytics`, `/api/insights`, `/api/webattacks`, `/api/audit`) |
+| `agent/server.py` | 진입점. Flask 앱을 waitress로 실행(감시·에이전트 스레드가 들어 있어 프로세스는 하나). 콘솔과 API(`/api/state`, `/api/chat`, `/api/approve`, `/api/reject`, `/api/apikey`, `/api/overview`, `/api/analytics`, `/api/insights`, `/api/webattacks`, `/api/audit`) |
 | `agent/brain.py` | LLM 호출 루프(제공자 어댑터 `agent/providers/`: Mock·Gemini·Claude). 관리자 대화·감시 경보·승인 결과가 한 대화로 이어지고, 도구를 실제로 쓴 요청만 조사 기록으로 남김 |
 | `agent/state.py` | 조사·경보·승인 상태. 조사(`cases.json`)와 승인 요청(`approvals.json`)은 재시작해도 남고, 번호는 저장된 최대값 다음부터 이어짐 |
 | `agent/warehouse.py`, `analytics.py`, `anomaly.py`, `correlate.py` | 운영 데이터 적재·KPI·이상 탐지·상관분석 (설계와 검증: `docs/`) |
@@ -115,7 +115,7 @@ DMZ 웹 서버의 접속 로그를 분석해 외부 공격자의 SQL 인젝션·
 | `agent/devices.py` | IOS telnet, pfSense SSH 접속 |
 | `agent/static/index.html` | 대시보드 화면 |
 | `agent/smoke_test.py` | API 키 없이 도구·안전장치 점검 (AGENT-PC에서 실행) |
-| `deploy.py`, `deploy/lab-agent.service` | AGENT-PC로 배포, systemd 서비스 |
+| `deploy.py`, `deploy/lab-agent.service` | AGENT-PC로 배포(`agent/requirements.txt` 설치 포함), systemd 서비스 |
 | `lab_up.py` | 랩 기동 |
 | `keys/`, `secrets.env` | 설치용 SSH 키와 장비 관리 계정. **git에 올리지 마세요**(`.gitignore` 처리됨) |
 

@@ -87,6 +87,26 @@ def load_cases():
     _resume_ids()
 
 
+def settle_stale_cases():
+    """재시작 시점에 '조치 중·재검증 중'으로 남은 건은 진행 중일 수 없다(작업 큐는 메모리에만 있다).
+    승인이 모두 끝났는데 검증 기록이 없으면 해결로 두지 않고 확인 요청으로 돌려 사람이 보게 한다."""
+    changed = False
+    with lock:
+        for c in cases:
+            if c.get("status") not in ("executing", "verifying"):
+                continue
+            mine = [a for a in approvals if a.get("case_id") == c["id"]]
+            if any(a["status"] in ("pending", "running") for a in mine):
+                continue
+            c["status"] = "needs_confirm"
+            c["reverification"] = (c.get("reverification") or "") + \
+                "\n[자동 정리] 승인 실행 후 재검증 결과가 이 건에 연결되지 않은 채 에이전트가 재시작됐습니다. 장비 상태를 직접 확인하세요."
+            c["reverification"] = c["reverification"].strip()
+            changed = True
+    if changed:
+        save_cases()
+
+
 def save_approvals():
     """승인 요청은 재시작해도 남아야 한다(대기 중인 요청이 사라지면 관리자가 판단할 기회를 잃는다)."""
     try:

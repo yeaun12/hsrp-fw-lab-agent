@@ -19,6 +19,7 @@ _fail_since = {}           # device -> 처음 실패한 시각
 _down_alerted = set()
 _pending = []
 _pending_lock = threading.Lock()
+_web_fail = {}                 # WEB 로그 수집 연속 실패 {"msg", "n"} (같은 오류 반복 기록 방지)
 
 
 def _raise(kind, severity, title, detail, key, analyze=True):
@@ -85,8 +86,15 @@ def _poll_webattacks():
     try:
         rows = web_detect.scan(lines=300, since_sec=config.WEB_WINDOW_SEC)  # 지난 로그로 경보가 다시 뜨지 않게
     except Exception as e:                 # WEB 로그 수집 실패는 조용히 넘긴다(웹 앱이 없을 수도 있음)
-        state.log_audit("monitor", "error", f"webattack: {type(e).__name__}: {e}")
+        # 같은 실패를 주기마다 남기면 감사 로그가 묻힌다(주간 보고서에서 1주 2,275건 발견) → 시작·변경 때만 남긴다.
+        msg = f"webattack: {type(e).__name__}: {e}"
+        if _web_fail.get("msg") != msg:
+            state.log_audit("monitor", "error", msg + " (복구될 때까지 같은 오류는 다시 기록하지 않음)")
+        _web_fail.update(msg=msg, n=_web_fail.get("n", 0) + 1)
         return
+    if _web_fail:
+        state.log_audit("monitor", "recovered", f"WEB 로그 수집 복구 (실패 {_web_fail['n']}회 뒤)")
+        _web_fail.clear()
     with state.lock:
         state.status["web_attacks"] = [{"src": r["src"], "attempts": r["attempts"],
                                         "categories": r["categories"], "success": bool(r["success_hints"])} for r in rows[:5]]

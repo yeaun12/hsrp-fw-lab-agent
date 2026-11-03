@@ -137,23 +137,27 @@ def _load():
         pass
     state.load_cases()
     state.load_approvals()
+    state.settle_stale_cases()
 
 
-def submit(text, source):
-    """관리자 메시지, 감시 알림, 승인 결과를 에이전트 작업 큐에 넣는다."""
+def submit(text, source, case_id=None):
+    """관리자 메시지, 감시 알림, 승인 결과를 에이전트 작업 큐에 넣는다.
+    승인 결과는 그 승인을 낸 조사 건(case_id)으로 이어 붙인다."""
     state.add_chat(source, text)
     ok, msg = providers.get_provider().available()
     if not ok:
         state.add_chat("system", msg + " (대시보드 오른쪽 위에서 모델·키를 설정하세요. Mock 모델은 키 없이 동작합니다.)")
         return
-    _queue.put((text, source))
+    _queue.put((text, source, case_id))
 
 
-def _open_or_continue_case(source, user_text):
-    """관리자 요청·경보는 새 조사 건을 열고, 승인 결과는 그 조사 건을 이어 검증 단계로 둔다."""
+def _open_or_continue_case(source, user_text, case_id=None):
+    """관리자 요청·경보는 새 조사 건을 열고, 승인 결과는 그 승인을 낸 조사 건을 이어 검증 단계로 둔다.
+    (예전엔 '지금 활성인 건'에 이어 붙여, 승인 여러 건을 연달아 처리하면 검증이 엉뚱한 건에 기록됐다.)"""
     if source == "approval":
-        case = state.current_case() or state.open_case(source, user_text)
+        case = state.get_case(case_id) or state.current_case() or state.open_case(source, user_text)
         with state.lock:
+            state.active_case["id"] = case["id"]
             case["status"] = "verifying"
             case["updated"] = state.now()
         return case
@@ -184,11 +188,11 @@ def _finalize_case(case, source, last_text):
     state.save_cases()
 
 
-def _run_turn(user_text, source):
+def _run_turn(user_text, source, case_id=None):
     _messages.append({"role": "user", "content": user_text})
     # 단순 대화·질의응답은 조사 기록을 남기지 않는다. 관리자 요청은 에이전트가 도구를 실제로
     # 쓰는 순간('진짜 조사')에만 사건을 지연 생성하고, 감시 경보·승인 결과는 즉시 사건과 연결한다.
-    case = None if source == "admin" else _open_or_continue_case(source, user_text)
+    case = None if source == "admin" else _open_or_continue_case(source, user_text, case_id)
     acc = {"steps": 0, "calls": 0, "input": 0, "output": 0, "model": "", "provider": ""}
     provider = providers.get_provider()
     run_cost, last_call, last_text = 0.0, None, ""
@@ -235,7 +239,7 @@ def _run_turn(user_text, source):
                 return
 
             if case is None:                        # 도구를 실제로 쓰는 순간에 조사 건을 연다 (지연 생성)
-                case = _open_or_continue_case(source, user_text)
+                case = _open_or_continue_case(source, user_text, case_id)
                 with state.lock:                    # 사건 생성 전까지 누적한 호출·토큰 통계를 넘긴다
                     case["steps"] += acc["steps"]
                     case["tokens"]["calls"] += acc["calls"]
@@ -276,10 +280,10 @@ def _run_turn(user_text, source):
 
 def _worker():
     while True:
-        text, source = _queue.get()
+        text, source, case_id = _queue.get()
         state.agent_busy.update(value=True, since=time.time())
         try:
-            _run_turn(text, source)
+            _run_turn(text, source, case_id)
         except Exception as e:  # 에이전트가 죽지 않게 하고 화면에 알린다
             state.add_chat("system", f"에이전트 내부 오류: {type(e).__name__}: {e}")
         finally:

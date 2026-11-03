@@ -189,9 +189,13 @@ def interpret(findings):
     ok, msg = provider.available()
     if not ok or provider.name == "mock":
         return {}, None, {}
-    brief = [{"device": f["device"], "changes": [f"{c['sign']} {c['line']}" + (f"  [승인 #{c['approval']}]" if c["approval"]
-                                                                                 else "  [승인 기록 없음]")
-                                                for c in f["changes"][:40]]} for f in findings]
+    # 승인된 변경은 사람이 이미 판단했으므로 승인 없는 줄이 있는 장비만 해석한다(호출·오해 줄임).
+    # +/- 기호를 AI가 반대로 읽은 적이 있어 '추가/삭제'로 풀어 쓴다.
+    brief = [{"device": f["device"], "changes": [("추가: " if c["sign"] == "+" else "삭제: ") + c["line"] +
+                                                (f"  [승인 #{c['approval']}]" if c["approval"] else "  [승인 기록 없음]")
+                                                for c in f["changes"][:40]]} for f in findings if f.get("unapproved")]
+    if not brief:
+        return {}, None, {}
     resp = provider.generate(SYSTEM, [{"role": "user", "content": json.dumps(brief, ensure_ascii=False)}], [])
     if resp.stop_reason == "error":
         return {}, f"AI 해석 실패: {resp.error}", resp.usage
@@ -230,9 +234,10 @@ def run(dry=False):
             findings.append({"device": dev, "since": base["time"], "changes": authorize(dev, changes, base["time"])})
         if changes and not dry:
             _save_baseline(dev, raw, lines, started)    # 한 번 보고한 변경은 다음 비교의 기준이 된다
-    ai, ai_error, usage = interpret(findings) if findings else ({}, None, {})
     for f in findings:
         f["unapproved"] = sum(1 for c in f["changes"] if not c["approval"])
+    ai, ai_error, usage = interpret(findings) if findings else ({}, None, {})
+    for f in findings:
         f["ai"] = ai.get(f["device"])
     result = {"agent": AGENT_ID, "started": started, "finished": _now(), "dry": dry,
               "checked": sorted(snaps), "errors": errors, "baselined": baselined, "findings": findings,

@@ -37,8 +37,12 @@ def _decide(approval_id, approve, actor="관리자"):
     state.save_approvals()
     if not approve:
         state.log_audit(actor, "rejected", f"#{rec['id']} {rec['summary']}")
-        brain.submit(f"[관리자 거부] 승인 요청 #{rec['id']}({rec['summary']})을 관리자가 거부했습니다. 실행하지 않았습니다.",
-                     "approval")
+        with state.lock:                             # 같은 대상의 다른 요청이 승인됐을 수 있다(중복 요청 정리)
+            same = [f"#{a['id']} {a['status']}" for a in state.approvals
+                    if a["id"] != rec["id"] and a["tool"] == rec["tool"] and a["input"] == rec["input"]]
+        brain.submit(f"[관리자 거부] 승인 요청 #{rec['id']}({rec['summary']})을 관리자가 거부했습니다. 실행하지 않았습니다."
+                     + (f"\n같은 대상의 다른 승인 요청: {', '.join(same)} (거부가 그 요청의 결과를 뜻하지는 않습니다)" if same else ""),
+                     "approval", case_id=rec.get("case_id"))
         return rec
 
     def run():
@@ -64,7 +68,7 @@ def _decide(approval_id, approve, actor="관리자"):
         state.save_approvals()
         state.log_audit("agent", "executed" if status == "done" else "failed", f"#{rec['id']} {result.splitlines()[0]}")
         brain.submit(f"[관리자 승인] 승인 요청 #{rec['id']}({rec['summary']})을 실행했습니다.\n실행 결과:\n{result}\n"
-                     "의도대로 적용됐는지 조회로 검증하고 보고하세요.", "approval")
+                     "의도대로 적용됐는지 조회로 검증하고 보고하세요.", "approval", case_id=rec.get("case_id"))
 
     threading.Thread(target=run, daemon=True).start()
     return rec

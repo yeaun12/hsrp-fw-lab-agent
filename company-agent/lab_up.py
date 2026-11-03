@@ -86,26 +86,48 @@ def wait_ios(node, timeout=400):
     return False
 
 
-def wait_pfsense(timeout=900):
-    """pfSense 시리얼 콘솔에 메뉴나 셸 프롬프트가 뜰 때까지 기다린다 (부팅 완료)."""
+def fw_ssh_ready(timeout=600):
+    """AGENT-PC에서 FW 관리 SSH 포트(10.0.99.1:22)가 열릴 때까지 기다린다 (부팅 완료).
+
+    예전엔 FW 시리얼 콘솔(GNS3 telnet)을 읽어 판단했는데, 두 가지 문제가 있었다.
+    - 커널 로그 "Trying to mount root"의 "root"에 걸려 멈춘 부팅도 완료로 오판했다.
+    - 콘솔 파이프를 아무도 비우지 않으면 시리얼 주 콘솔인 pfSense가 출력하다 멈추고,
+      GNS3도 그 파이프 읽기에 묶여 API 전체가 응답하지 않았다. 그래서 콘솔은 건드리지 않는다.
+    """
+    key = os.path.join(HERE, "keys", "agentpc_key")
+    known = os.path.join(HERE, "keys", "agentpc_known_hosts")
     end = time.time() + timeout
     while time.time() < end:
-        try:
-            s = socket.create_connection(("localhost", nodes()["FW"]["console"]), timeout=1)
-            s.sendall(b"\r")
-            buf, stop = b"", time.time() + 8
-            while time.time() < stop:
-                try:
-                    buf += s.recv(4096)
-                except socket.timeout:
-                    pass
-            s.close()
-            if b"Enter an option" in buf or b"root" in buf:
-                return True
-        except OSError:
-            pass
+        r = subprocess.run(["ssh", "-p", "2222", "-i", key, "-o", f"UserKnownHostsFile={known}", "-o", "BatchMode=yes",
+                            "-o", "ConnectTimeout=5", "root@127.0.0.1", "timeout 3 bash -c '</dev/tcp/10.0.99.1/22'"],
+                           capture_output=True, text=True)
+        if r.returncode == 0:
+            return True
         time.sleep(10)
     return False
+
+
+def fw_detach_serial():
+    """FW 시리얼 콘솔 파이프를 뗀다. 파이프가 막힌 상태에선 VBoxManage changeuartmode1 자체도 멈추므로
+    (2026-11-03 실측) GNS3 콘솔(telnet)을 읽어 파이프를 비우는 동안 명령을 실행한다."""
+    stop = time.time() + 120
+    try:
+        s = socket.create_connection(("localhost", nodes()["FW"]["console"]), timeout=1)
+    except OSError:
+        s = None
+    p = subprocess.Popen([VBOX, "controlvm", "FW", "changeuartmode1", "disconnected"])
+    while p.poll() is None and time.time() < stop:
+        try:
+            if not s or not s.recv(65536):   # 콘솔이 닫히면 더 읽지 않는다
+                time.sleep(0.5)
+        except OSError:
+            time.sleep(0.2)
+    if s:
+        s.close()
+    if p.poll() is None:
+        p.kill()
+        return False
+    return p.returncode == 0
 
 
 def step(msg):
@@ -171,7 +193,14 @@ def main():
         print(sw, port, "재시작")
 
     step("5. 방화벽 부팅 대기 후 에이전트 서비스 시작")
-    print("FW 부팅 완료:", wait_pfsense())   # FW가 늦게 뜨면 '접속 불가' 경보가 에이전트 분석으로 이어지므로 기다린다
+    booted = fw_ssh_ready()   # FW가 늦게 뜨면 '접속 불가' 경보가 에이전트 분석으로 이어지므로 기다린다
+    if not booted:
+        # 부팅이 시리얼 출력에서 멈춘 경우: 콘솔 파이프를 떼고 VM만 리셋한다(GNS3 reload는 파이프를 다시 붙인다).
+        print("FW 부팅이 멈춘 것으로 보여 시리얼 콘솔을 분리하고 재시작합니다.")
+        print("시리얼 콘솔 분리:", fw_detach_serial())
+        subprocess.run([VBOX, "controlvm", "FW", "reset"], check=True)
+        booted = fw_ssh_ready()
+    print("FW 부팅 완료:", booted)
     print("시작:", agent_service("start"))
 
     step("6. 확인")

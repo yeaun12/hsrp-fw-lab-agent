@@ -1,0 +1,9 @@
+[Unit]
+Description=Write the daily operations report every morning (weekly on Mondays)
+
+[Timer]
+OnCalendar=*-*-* 08:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

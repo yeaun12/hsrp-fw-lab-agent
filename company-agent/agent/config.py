@@ -7,9 +7,40 @@ SECRETS_DIR = os.path.join(BASE_DIR, "secrets")    # API 키, 장비 계정 (chm
 SSH_KEY = os.path.join(BASE_DIR, "keys", "id_ed25519")
 SSH_KNOWN_HOSTS = os.path.join(BASE_DIR, "keys", "known_hosts")
 
-MODEL = "claude-opus-5-5"
 EFFORT = "medium"
 MAX_AGENT_STEPS = 20          # 한 번의 대화 턴에서 도구 호출 최대 횟수
+MAX_TOKENS = 8000             # 응답 최대 토큰
+RUN_BUDGET_USD = 0.50         # 대화 턴 1회의 비용 상한(초과 시 중단). 무료 모델은 0이라 걸리지 않음
+
+# LLM 제공자. 기본은 mock(키 불필요)이라 키 없이도 도구 호출 루프를 검증할 수 있다.
+# 대시보드에서 바꾸고 키를 넣으면 gemini/anthropic으로 전환된다. (환경변수 LLM_PROVIDER로도 지정 가능)
+DEFAULT_PROVIDER = "mock"
+
+# 제공자별 설정. price는 USD / 100만 토큰 (무료 티어는 0). key_secret은 secrets 파일 이름.
+PROVIDERS = {
+    "mock":      {"label": "Mock (테스트용, 키 불필요)", "model": "mock-1",
+                  "price": {"input": 0, "output": 0}, "key_secret": None, "key_env": None},
+    "gemini":    {"label": "Google Gemini (무료 티어)", "model": "gemini-3.5-flash-lite",
+                  # 무료 티어는 입출력 $0 (공식 pricing 기준). 유료 전환 시 갱신.
+                  "price": {"input": 0, "output": 0},
+                  # 2026-05-28 이후 새 키는 'AQ.' 등 auth key 형식, 그 이전은 'AIza'
+                  "key_secret": "gemini_api_key", "key_env": "GEMINI_API_KEY", "key_prefix": ("AIza", "AQ.")},
+    "anthropic": {"label": "Anthropic Claude (유료)", "model": "claude-opus-5-5",
+                  "price": {"input": 4.00, "output": 20.00, "cache_read": 0.20, "cache_write": 5.00},
+                  "key_secret": "anthropic_api_key", "key_env": "ANTHROPIC_API_KEY", "key_prefix": ("sk-ant-",)},
+}
+
+
+def active_provider():
+    name = read_secret("llm_provider") or os.environ.get("LLM_PROVIDER") or DEFAULT_PROVIDER
+    return name if name in PROVIDERS else DEFAULT_PROVIDER
+
+
+def provider_key(name):
+    cfg = PROVIDERS.get(name, {})
+    if not cfg.get("key_secret"):
+        return None
+    return read_secret(cfg["key_secret"]) or os.environ.get(cfg.get("key_env") or "", None)
 
 LISTEN_HOST = "0.0.0.0"
 LISTEN_PORT = 8080
@@ -18,6 +49,7 @@ LISTEN_PORT = 8080
 POLL_FIREWALL_SEC = 10
 POLL_NETWORK_SEC = 20
 SCAN_WINDOW_SEC = 120
+WEB_WINDOW_SEC = 300          # 웹 공격 경보는 최근 이 시간 안의 요청만 센다(예전 로그 재경보 방지)
 SCAN_MIN_PORTS = 8            # 한 출발지가 창 안에서 막힌 서로 다른 목적지 포트 수
 
 # 관리 대상 장비. host는 관리망(VLAN40)에서 접근하는 주소.

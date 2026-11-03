@@ -28,6 +28,11 @@ def _raise(kind, severity, title, detail, key, analyze=True):
             _pending.append(rec)
 
 
+def raise_alert(kind, severity, title, detail, key):
+    """다른 에이전트(예: 변경 감지)가 보고한 문제를 감시 경보와 같은 경로로 올린다 → 대응 에이전트가 조사."""
+    _raise(kind, severity, title, detail, key)
+
+
 def _dispatch():
     """처음 경보가 들어온 뒤 BATCH_SEC 동안 모아서 에이전트에 한 메시지로 넘긴다."""
     while True:

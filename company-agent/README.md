@@ -88,6 +88,24 @@ DMZ 웹 서버의 접속 로그를 분석해 외부 공격자의 SQL 인젝션·
 - 방화벽 차단은 출발지를 막을 뿐이고, 인젝션·XSS 취약점 자체는 WEB 앱 수정으로 고쳐야 합니다. 에이전트는 이를 분리해서 알립니다.
 - 테스트 포털 설치와 시연 방법: [weblab/README.md](weblab/README.md) (교육용·격리 랩 전용).
 
+## 멀티 에이전트 (설정 변경 감지)
+
+![에이전트 화면](docs/images/console-agents.png)
+
+에이전트를 역할별로 나눠, 권한도 역할마다 코드로 따로 제한합니다. 콘솔의 **개요 › 에이전트** 화면에서 역할·권한·상태·마지막 활동을 봅니다.
+
+| 에이전트 | 하는 일 | 권한 | 실행 |
+|---|---|---|---|
+| 대응 에이전트 (`brain.py`) | 경보와 관리자 요청을 조사하고 조치를 제안 | 조회 자유, 변경은 승인 후 실행 | 경보·요청이 올 때 (서버 안) |
+| 감시 (`monitor.py`) | 장비 응답·방화벽 차단·웹 로그를 규칙으로 감시 (AI 없음) | 조회만 | 10~20초 주기 (서버 안) |
+| 변경 감지 에이전트 (`drift_agent.py`) | 장비 6대 설정을 직전 기준과 비교 → 바뀐 줄마다 승인 기록과 대조 → AI가 위험도·의미 해석 → 서버에 보고 | `show running-config`, `cat /cf/conf/config.xml` 두 명령만 | 15분 주기 (별도 프로세스, `lab-drift.timer`) |
+
+- **승인 판정은 코드, 해석은 AI.** 바뀐 줄이 실행 완료된 승인 요청(`approvals.json`)과 맞는지는 코드가 정하고, AI는 그 판정을 바꾸지 못합니다. AI 키가 없어도 판정과 경보는 동작합니다.
+- **승인 없는 변경이면** 서버가 경보를 올리고, 대응 에이전트가 이어받아 장비를 조회한 뒤 원복 승인을 요청합니다. 에이전트끼리는 서버 API(`/api/agents/report`, 같은 PC에서만 허용)로만 주고받습니다.
+- 설정의 비밀번호·키·인증서 값은 저장 전에 `<가림>`으로 바꾸고, AI에는 가린 차이만 보냅니다. 방화벽 설정은 XML을 `경로 = 값` 줄로 펴서 비교해, 같은 규칙·별칭 안의 변경을 한 승인으로 묶어 판정합니다.
+- 실측(2026-11-03): CORE1에 승인 없이 Loopback99를 만들고 바로 점검을 실행하자 9초 뒤 경보, 그 뒤 대응 에이전트가 장비 설정·로그를 확인하고 원복(`no interface Loopback99`) 승인을 요청했습니다. 변경이 없을 때 6대를 두 번 비교해 오탐 0건. 정기 실행만으로는 변경 후 최대 15분 안에 잡힙니다.
+- 즉시 실행: 화면의 **변경 점검 지금 실행** 버튼, 또는 AGENT-PC에서 `systemctl start lab-drift.service`. 기준과 이력은 `/opt/lab-agent/data/configs/<장비>/`(최근 30개 원문 보관).
+
 ## 에이전트가 할 수 있는 일
 
 | 도구 | 종류 | 내용 |
@@ -106,13 +124,14 @@ DMZ 웹 서버의 접속 로그를 분석해 외부 공격자의 SQL 인젝션·
 
 | 경로 | 내용 |
 |---|---|
-| `agent/server.py` | 진입점. Flask 앱을 waitress로 실행(감시·에이전트 스레드가 들어 있어 프로세스는 하나). 콘솔과 API(`/api/state`, `/api/chat`, `/api/approve`, `/api/reject`, `/api/apikey`, `/api/overview`, `/api/analytics`, `/api/insights`, `/api/webattacks`, `/api/audit`) |
+| `agent/server.py` | 진입점. Flask 앱을 waitress로 실행(감시·에이전트 스레드가 들어 있어 프로세스는 하나). 콘솔과 API(`/api/state`, `/api/chat`, `/api/approve`, `/api/reject`, `/api/apikey`, `/api/overview`, `/api/analytics`, `/api/insights`, `/api/webattacks`, `/api/audit`, `/api/agents`) |
 | `agent/brain.py` | LLM 호출 루프(제공자 어댑터 `agent/providers/`: Mock·Gemini·Claude). 관리자 대화·감시 경보·승인 결과가 한 대화로 이어지고, 도구를 실제로 쓴 요청만 조사 기록으로 남김 |
 | `agent/state.py` | 조사·경보·승인 상태. 조사(`cases.json`)와 승인 요청(`approvals.json`)은 재시작해도 남고, 번호는 저장된 최대값 다음부터 이어짐 |
 | `agent/warehouse.py`, `analytics.py`, `anomaly.py`, `correlate.py` | 운영 데이터 적재·KPI·이상 탐지·상관분석 (설계와 검증: `docs/`) |
 | `agent/tools.py` | 도구 정의, 허용 목록, 승인 실행 |
 | `agent/monitor.py` | 자동 감시 (방화벽 10초, HSRP·게이트웨이 20초, 액세스 장비 60초). 장애는 45초 유예, 경보는 15초 묶음 |
 | `agent/devices.py` | IOS telnet, pfSense SSH 접속 |
+| `agent/drift_agent.py`, `deploy/lab-drift.service`, `deploy/lab-drift.timer` | 설정 변경 감지 에이전트(별도 프로세스, 15분 주기) |
 | `agent/static/index.html` | 대시보드 화면 |
 | `agent/smoke_test.py` | API 키 없이 도구·안전장치 점검 (AGENT-PC에서 실행) |
 | `deploy.py`, `deploy/lab-agent.service` | AGENT-PC로 배포(`agent/requirements.txt` 설치 포함), systemd 서비스 |

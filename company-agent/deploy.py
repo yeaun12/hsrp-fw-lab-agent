@@ -27,8 +27,9 @@ def ssh(script, stdin=None):
 def main():
     subprocess.run(["scp", "-q", "-r", "-P", "2222", *SSH, os.path.join(HERE, "agent"), "root@127.0.0.1:/opt/lab-agent/app.new"],
                    check=True)
-    subprocess.run(["scp", "-q", "-P", "2222", *SSH, os.path.join(HERE, "deploy", "lab-agent.service"),
-                    "root@127.0.0.1:/etc/systemd/system/lab-agent.service"], check=True)
+    for unit in ("lab-agent.service", "lab-drift.service", "lab-drift.timer"):   # 대응 서버 + 변경 감지 에이전트
+        subprocess.run(["scp", "-q", "-P", "2222", *SSH, os.path.join(HERE, "deploy", unit),
+                        f"root@127.0.0.1:/etc/systemd/system/{unit}"], check=True)
     if "--secrets" in sys.argv:
         vals = dict(l.strip().split("=", 1) for l in open(sys.argv[sys.argv.index("--secrets") + 1]) if "=" in l)
         ssh("umask 077; mkdir -p /opt/lab-agent/secrets; read -r u; read -r p; "
@@ -39,8 +40,9 @@ def main():
         "mkdir -p /opt/lab-agent/data; chmod 700 /opt/lab-agent/secrets 2>/dev/null || true; "
         "/opt/lab-agent/venv/bin/pip install -q --disable-pip-version-check -r /opt/lab-agent/app/requirements.txt; "
         "firewall-cmd -q --add-port=8080/tcp --permanent; firewall-cmd -q --reload; "
-        "systemctl daemon-reload; systemctl enable -q lab-agent; systemctl restart lab-agent; sleep 2; "
-        "systemctl is-active lab-agent")
+        "systemctl daemon-reload; systemctl enable -q lab-agent; systemctl restart lab-agent; "
+        "systemctl enable -q --now lab-drift.timer; sleep 2; "
+        "systemctl is-active lab-agent lab-drift.timer")
 
 
 if __name__ == "__main__":

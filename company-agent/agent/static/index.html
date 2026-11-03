@@ -326,6 +326,7 @@ dialog input,dialog select{width:100%;padding:7px 9px;margin:6px 0;border:1px so
     <h6>개요</h6>
     <button data-view="overview" class="on" aria-current="page">개요</button>
     <button data-view="brief">브리핑</button>
+    <button data-view="agents">에이전트<span class="n" id="n-agents"></span></button>
     <h6>대응</h6>
     <button data-view="decide">결정 대기<span class="n" id="n-decide"></span></button>
     <button data-view="cases">조사 기록<span class="n" id="n-cases"></span></button>
@@ -374,6 +375,14 @@ dialog input,dialog select{width:100%;padding:7px 9px;margin:6px 0;border:1px so
         <section class="pn"><header><h2>에이전트 활동</h2><span class="meta" id="act-meta"></span></header><div class="scroll" id="act-brief"></div></section>
         <section class="pn"><header><h2>최근 이벤트</h2><span class="meta">경보 + 조사</span></header><div class="scroll" id="tl-brief"></div></section>
       </div>
+    </section>
+
+    <!-- 에이전트 -->
+    <section class="view" id="v-agents">
+      <div class="vh"><h1>에이전트</h1>
+        <div class="act"><button class="btn" id="driftrun" title="변경 감지 에이전트를 지금 한 번 실행">변경 점검 지금 실행</button></div></div>
+      <section class="pn"><header><h2>역할과 상태</h2><span class="meta">권한은 에이전트마다 코드로 제한</span></header><div id="agents"><div class="empty">불러오는 중</div></div></section>
+      <section class="pn"><header><h2>설정 변경 감지</h2><span class="meta mono" id="drift-meta"></span></header><div id="drift"><div class="empty">불러오는 중</div></div></section>
     </section>
 
     <!-- 결정 대기 -->
@@ -760,6 +769,40 @@ function renderKisa(){
     : `<div class="empty">${running ? "점검 진행 중" : "점검 기록 없음"}</div>`);
 }
 
+// ---- 에이전트 (/api/agents): 대응·감시·변경 감지의 역할, 권한, 마지막 활동
+let AG = null, agLoaded = 0;
+async function loadAgents(){
+  agLoaded = Date.now();
+  try { AG = await (await fetch("/api/agents")).json(); } catch (e) { return; }
+  renderAgents();
+}
+const AG_ST = {"작업 중":"info", "점검 중":"info", "동작 중":"ok", "대기":"ok", "시작 중":"med", "타이머 꺼짐":"high"};
+function renderAgents(){
+  if (!AG) return;
+  const list = AG.agents || [], drift = list.find(a => a.id === "drift") || {}, r = drift.result;
+  put("#agents", `<table class="t"><tr><th>상태</th><th>에이전트</th><th>권한</th><th>실행</th><th>마지막 활동</th></tr>` + list.map(a =>
+    `<tr><td><span class="st ${AG_ST[a.state] || "info"}">${esc(a.state)}</span></td><td><b style="font-weight:600">${esc(a.name)}</b><div class="dim" style="font-size:12px">${esc(a.role)}</div></td>
+     <td style="font-size:12px">${esc(a.perm)}</td><td style="font-size:12px">${esc(a.runs)}${a.next ? `<div class="dim mono">다음 ${esc(a.next.slice(5, 19))}</div>` : ""}</td>
+     <td style="font-size:12px">${a.last ? `<span class="mono">${esc((a.last.time || "").slice(5, 19))}</span> ${esc(a.last.text || "")}` : `<span class="faint">기록 없음</span>`}</td></tr>`).join("") + `</table>`);
+  $("#driftrun").disabled = drift.state === "점검 중";
+  const bad = r ? (r.findings || []).reduce((n, f) => n + (f.unapproved || 0), 0) : 0;
+  setn("#n-agents", bad, true);
+  put("#drift-meta", r ? `${r.finished}${r.dry ? " · 비교만" : ""}` : "");
+  if (!r){ put("#drift", `<div class="empty">아직 실행 기록이 없습니다. 첫 실행은 현재 설정을 기준으로 저장합니다.</div>`); return; }
+  const head = `<div class="pb"><b style="font-weight:600">${esc(r.summary)}</b>` +
+    (r.baselined && r.baselined.length ? `<div class="dim" style="font-size:12px">기준 생성: ${esc(r.baselined.join(", "))}</div>` : "") +
+    Object.entries(r.errors || {}).map(([d, e]) => `<div style="font-size:12px;color:var(--high)">${esc(d)} 접속 실패: ${esc(e)}</div>`).join("") +
+    (r.ai_error ? `<div class="dim" style="font-size:12px">${esc(r.ai_error)}</div>` : "") + `</div>`;
+  const RISK = {high:"crit", medium:"high", low:"med"};
+  const body = (r.findings || []).map(f => { const ai = f.ai;
+    return `<div class="pb" style="border-top:1px solid var(--rule)"><b style="font-weight:600">${esc(f.device)}</b> <span class="dim" style="font-size:12px">기준 ${esc(f.since)} 이후 ${f.changes.length}줄 변경 · 승인 없음 ${f.unapproved}줄</span>
+      ${ai ? `<dl class="kv" style="margin:6px 0"><dt>AI 해석</dt><dd><span class="st ${RISK[ai.risk] || "info"}">${esc(ai.risk)}</span> ${esc(ai.meaning)}</dd><dt>권고</dt><dd>${esc(ai.recommendation)}</dd></dl>` : ""}
+      <table class="t"><tr><th></th><th>설정</th><th>판정</th></tr>` + f.changes.map(c =>
+        `<tr><td class="mono">${c.sign === "+" ? "추가" : "삭제"}</td><td class="mono" style="font-size:12px">${esc(c.line)}</td>
+         <td class="nw">${c.approval ? `<span class="st ok">승인 #${c.approval}</span>` : `<span class="st crit">승인 기록 없음</span>`}</td></tr>`).join("") + `</table></div>`; }).join("");
+  put("#drift", head + (body || `<div class="empty">직전 기준과 달라진 설정이 없습니다.</div>`));
+}
+
 // ---- 상관·이상 분석 (/api/insights)
 let insLoaded = 0;
 async function loadInsights(){
@@ -966,6 +1009,7 @@ function showView(v){
   $$(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
   if (v === "insights" && Date.now() - insLoaded > 60e3) loadInsights();     // 열 때 1분 넘은 결과면 다시 계산
   if (v === "analytics" && Date.now() - anLoaded > 60e3) loadAnalytics();
+  if (v === "agents") loadAgents();
   try { localStorage.setItem("secops.view3", v); } catch (e) {}
 }
 
@@ -1011,6 +1055,7 @@ async function openAudit(id){
       return `<td><span class="v v-${esc(v)}" title="${esc(tip)}">${esc(v)}${r.final ? "*" : ""}</span></td>`; }).join("") + "</tr>").join("");
   $("#auditdlg").showModal();
 }
+$("#driftrun").onclick = async () => { const r = await post("/api/agents/drift/run", {}); if (r.error) alert(r.error); setTimeout(loadAgents, 1500); };
 $("#auditrule").onclick = async () => { const r = await post("/api/audit/run", {}); if (r.error) alert(r.error); refresh(); };
 $("#agentbtn").onclick = () => setAgent(agentHidden());
 // 메뉴 접기: ☰ 버튼 또는 Ctrl+B. 상태는 다음 방문에도 유지한다.
@@ -1059,6 +1104,7 @@ async function refresh(){
   setn("#n-decide", items.length, true);
   setn("#n-cases", (d.cases || []).filter(c => OPEN_ST.includes(c.status)).length);
   renderChat(d.chat || []);
+  if ($("#v-agents").classList.contains("on") && Date.now() - agLoaded > 5000) loadAgents();   // 열려 있을 때만 5초마다
   for (const f of [renderOverview, renderBrief, renderDecide, renderCases, renderThreats, renderBlocks, renderInfra, renderAlerts, renderLog, renderKisa]){
     try { f(); } catch (err) { console.error(f.name, err); }
   }

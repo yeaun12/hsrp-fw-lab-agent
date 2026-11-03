@@ -7,6 +7,7 @@ Flask 앱을 waitress(순수 파이썬 WSGI 서버)로 띄운다. 감시·에이
 """
 import json
 import os
+import subprocess
 import threading
 import time
 
@@ -263,6 +264,99 @@ def api_apikey():
     state.log_audit("관리자", "llm_set", f"모델 제공자 {prov} 선택" + (" + 키 등록" if key else ""))
     return _json({"ok": True, "llm": providers.provider_info()})
 
+
+# ---- 멀티 에이전트: 역할이 다른 에이전트들의 상태와 보고 ----
+AGENTS = [
+    {"id": "response", "name": "대응 에이전트", "role": "경보와 관리자 요청을 조사하고 조치를 제안", "perm": "조회 자유, 변경은 승인 후 실행",
+     "runs": "경보·요청이 올 때 (서버 안)"},
+    {"id": "monitor", "name": "감시", "role": "장비 응답, 방화벽 차단, 웹 로그를 규칙으로 감시 (AI 없음)", "perm": "조회만",
+     "runs": f"{config.POLL_FIREWALL_SEC}~{config.POLL_NETWORK_SEC}초 주기 (서버 안)"},
+    {"id": "drift", "name": "변경 감지 에이전트", "role": "장비 설정을 직전 기준과 비교하고 승인 기록과 대조, AI가 위험 해석",
+     "perm": "설정 조회 명령 2개만 (변경 불가)", "runs": "15분 주기 (별도 프로세스, lab-drift.timer)"},
+]
+
+
+def _systemctl(*args):
+    try:
+        return subprocess.run(["systemctl", *args], capture_output=True, text=True, timeout=5).stdout.strip()
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+
+def _drift_last():
+    try:
+        with open(os.path.join(config.DATA_DIR, "drift_last.json"), encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+@app.get("/api/agents")
+def api_agents():
+    with state.lock:
+        last_case = state.cases[-1] if state.cases else None
+        busy = state.agent_busy["value"]
+        mon = state.status.get("updated")
+    # 주기 타이머(OnUnitActiveSec)는 NextElapseUSecRealtime이 비어 있어 list-timers의 NEXT 열을 읽는다.
+    tok = _systemctl("list-timers", "lab-drift.timer", "--no-pager", "--no-legend").split()
+    nxt = " ".join(tok[1:3]) if len(tok) > 3 and tok[0] != "-" else None
+    out = []
+    for a in AGENTS:
+        a = dict(a)
+        if a["id"] == "response":
+            a["state"] = "작업 중" if busy else "대기"
+            a["last"] = last_case and {"time": last_case.get("started"), "text": f"조사 #{last_case['id']}",
+                                       "status": last_case.get("status")}
+        elif a["id"] == "monitor":
+            a["state"] = "동작 중" if mon else "시작 중"
+            a["last"] = mon and {"time": mon, "text": "장비·방화벽·웹 로그 확인"}
+        else:
+            d = _drift_last()
+            if _systemctl("is-active", "lab-drift.service") == "activating":
+                a["state"] = "점검 중"
+            else:
+                a["state"] = "대기" if _systemctl("is-active", "lab-drift.timer") == "active" else "타이머 꺼짐"
+            a["last"] = d and {"time": d.get("finished"), "text": d.get("summary")}
+            a["next"] = nxt if nxt and nxt != "n/a" else None
+            a["result"] = d
+        out.append(a)
+    return _json({"agents": out})
+
+
+@app.post("/api/agents/report")
+def api_agents_report():
+    # 같은 PC의 에이전트 프로세스만 보고할 수 있다(대시보드 사용자나 외부에서 경보를 꾸며 넣지 못하게).
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        return _json({"error": "forbidden"}, 403)
+    r = _body()
+    if r.get("agent") != "drift":
+        return _json({"error": "알 수 없는 에이전트"}, 400)
+    state.log_audit("drift-agent", "drift_check", r.get("summary", ""))
+    bad = [f for f in r.get("findings") or [] if f.get("unapproved")]
+    if bad:
+        lines = []
+        for f in bad:
+            ai = f.get("ai") or {}
+            lines.append(f"{f['device']}: 기준({f.get('since')}) 이후 승인 기록 없는 변경 {f['unapproved']}줄"
+                         + (f" · AI 해석[{ai.get('risk')}]: {ai.get('meaning')}" if ai else ""))
+            lines += [f"  {c['sign']} {c['line']}" for c in f["changes"] if not c.get("approval")][:8]
+        monitor.raise_alert("config_drift", "high", "승인 없는 설정 변경: " + ", ".join(f["device"] for f in bad),
+                            "변경 감지 에이전트 보고.\n" + "\n".join(lines), key=f"drift:{r.get('started')}")
+    return _json({"ok": True})
+
+
+@app.post("/api/agents/drift/run")
+def api_drift_run():
+    if _systemctl("is-active", "lab-drift.service") == "activating":
+        return _json({"error": "변경 감지 점검이 이미 진행 중입니다."}, 409)
+    try:
+        r = subprocess.run(["systemctl", "start", "--no-block", "lab-drift.service"], capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return _json({"error": f"변경 감지 에이전트를 시작하지 못했습니다: {e}"}, 500)
+    if r.returncode:
+        return _json({"error": f"변경 감지 에이전트를 시작하지 못했습니다: {r.stderr.strip()[-200:]}"}, 500)
+    state.log_audit("관리자", "drift_run", "변경 감지 점검 즉시 실행")
+    return _json({"ok": True})
 
 def main():
     from waitress import serve

@@ -97,8 +97,9 @@ class GeminiProvider(Provider):
     def generate(self, system, messages, tools):
         body = {"systemInstruction": {"parts": [{"text": system}]},
                 "contents": _to_contents(messages),
-                "tools": _to_tools(tools),
                 "generationConfig": {"maxOutputTokens": self.max_tokens, "temperature": 0.2}}
+        if tools:                       # 도구 없는 호출(예: 변경 감지 에이전트의 해석)은 빈 선언을 보내지 않는다
+            body["tools"] = _to_tools(tools)
         try:
             data = self._post(body)
         except RuntimeError as e:
